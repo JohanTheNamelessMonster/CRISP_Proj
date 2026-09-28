@@ -1,7 +1,7 @@
 #include "wx/wx.h"
 #include "wx/glcanvas.h"
-#include "OpenGL/gl.h"
-#include "OpenGL/glu.h"
+#include "OpenGL/gl3.h"
+// #include "OpenGL/glu.h"
 #include <iostream>
 #include <fstream>
 
@@ -10,7 +10,7 @@ static std::string readFile(std::string filePath)
     std::string contents,line = "";
     std::ifstream file(filePath);
     while(std::getline(file,line)){
-        contents += line;
+        contents += (line + "\n");
     };
     return contents;
 };
@@ -32,7 +32,11 @@ static unsigned int compileShaders(const std::string &source, GLuint type)
         glGetShaderInfoLog(id,length,&length,message);
         std::cout << "Failed to compile" << (type == GL_VERTEX_SHADER ? " vertex " : " fragement ") << "shader \n";
         std::cout << message;
+        std::cout << glGetString(GL_VERSION) << "\n";
+        std::cout << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
+        // std::cout << source << "\n";
     };
+
 
     return id;
 };
@@ -46,7 +50,16 @@ static unsigned int makeShaders(const std::string &vertexShader, const std::stri
     glAttachShader(program,vs);
     glAttachShader(program,fs);
     glLinkProgram(program);
-    glValidateProgram(program);
+    int linkSuccess;
+    glGetProgramiv(program, GL_LINK_STATUS, &linkSuccess);
+    if (!linkSuccess) {
+        int length;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+        char* message = (char*)alloca(length * sizeof(char));
+        glGetProgramInfoLog(program, length, &length, message);
+        std::cout << "Failed to link program:\n" << message;
+        glValidateProgram(program);
+    }
 
     return program;
 
@@ -62,8 +75,8 @@ public:
     void reDraw(wxSizeEvent& e){wxWindow::Refresh();};
     void render(wxPaintEvent& e);
     void make2DViewPort(int topleft_x, int topleft_y, int bottomrigth_x, int bottomrigth_y);
-    float getHeight(){return wxWindow::GetSize().y;};
-    float getWidth(){return wxWindow::GetSize().x;};
+    float getHeight(){return (wxWindow::GetSize().y * wxWindow::GetContentScaleFactor());};
+    float getWidth(){return (wxWindow::GetSize().x * wxWindow::GetContentScaleFactor());};
 
     // User Interactions
     void leftClick(wxMouseEvent& e);
@@ -72,26 +85,34 @@ public:
 };
 
 GLCanvas::GLCanvas(wxFrame* parent, int* args) : wxGLCanvas(parent,wxID_ANY,args,wxDefaultPosition,wxDefaultSize,wxBORDER_DOUBLE){
-    context = new wxGLContext(this);
+    wxGLContextAttrs cxtAttrs;
+    cxtAttrs.CoreProfile().OGLVersion(4,1).ForwardCompatible().EndList();
+    context = new wxGLContext(this,nullptr,&cxtAttrs);
+    this->SetCurrent(*context);
+
+    if(!context->IsOK()){
+        std::cout << "Context not okay \n";
+    };
+
     Bind(wxEVT_PAINT,&GLCanvas::render,this,wxID_ANY);
     Bind(wxEVT_SIZE,&GLCanvas::reDraw,this,wxID_ANY);
 }
 
 void GLCanvas::make2DViewPort(int topleft_x, int topleft_y, int bottomrigth_x, int bottomrigth_y){
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glEnable(GL_TEXTURE_2D);
-    glEnable(GL_COLOR_MATERIAL);
+    // glEnable(GL_TEXTURE_2D);
+    // glEnable(GL_COLOR_MATERIAL);
     glEnable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 	
     glViewport(topleft_x, topleft_y, bottomrigth_x-topleft_x, bottomrigth_y-topleft_y);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
+    // glMatrixMode(GL_PROJECTION);
+    // glLoadIdentity();
     
-    gluOrtho2D(topleft_x, bottomrigth_x, bottomrigth_y, topleft_y);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    // gluOrtho2D(topleft_x, bottomrigth_x, bottomrigth_y, topleft_y);
+    // glMatrixMode(GL_MODELVIEW);
+    // glLoadIdentity();
 };
 
 void GLCanvas::render(wxPaintEvent& e){
@@ -107,18 +128,22 @@ void GLCanvas::render(wxPaintEvent& e){
 
 
     float positions[6] = {
-        0 , getHeight(),
-        getWidth(),getHeight(),
-        getWidth(),-getHeight()
+        -1.0f , 0.0f,
+        0.0f , 1.0f,
+        0.0f,0.0f
     };
+
+    unsigned int vao;
+    glGenVertexArrays(1,&vao);
+    glBindVertexArray(vao);
 
     unsigned int buffer;
     glGenBuffers(1,&buffer);
     glBindBuffer(GL_ARRAY_BUFFER,buffer);
     glBufferData(GL_ARRAY_BUFFER,sizeof(positions),positions,GL_STATIC_DRAW);
 
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1,2, GL_INT,GL_TRUE, 2 * sizeof(float),0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0,2, GL_FLOAT,GL_FALSE, 2 * sizeof(float),0);
 
     std::string vertexShader = readFile("../shaders/vertexShader.txt");
     std::string fragmentShader = readFile("../shaders/fragmentShader.txt");

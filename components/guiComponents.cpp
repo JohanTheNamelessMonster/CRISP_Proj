@@ -1,4 +1,5 @@
 #include "wx/wx.h"
+#include "OpenGL/gl.h"
 #include "OpenGLComponents.cpp"
 
 class mainWindow : public wxApp
@@ -33,8 +34,11 @@ bool mainWindow::OnInit()
     wxBoxSizer* testSizer = new wxBoxSizer(wxHORIZONTAL);
     int args[] = {WX_GL_RGBA,WX_GL_DOUBLEBUFFER,WX_GL_DEPTH_SIZE,16,0};
 
-    mainFrame* firstFrame = new mainFrame(nullptr,wxT("DaemonSlayer"));
 
+    wxGLAttributes canvasAttrs;
+    canvasAttrs.PlatformDefaults().Defaults().EndList(); 
+
+    mainFrame* firstFrame = new mainFrame(nullptr,wxT("DaemonSlayer"));
     GLCanvas* canvas = new GLCanvas(firstFrame,args);
 
     testSizer->Add(canvas,1,wxGROW);

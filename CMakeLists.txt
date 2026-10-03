@@ -1,6 +1,6 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
 
-set(PROJECT_TITLE "DaemonSlayer")
+set(PROJECT_TITLE "MazeRunner")
 project(${PROJECT_TITLE} CXX)
 
 set(wxWidgets_CONFIGURATION mswu)

@@ -38,7 +38,7 @@ bool mainWindow::OnInit()
     wxGLAttributes canvasAttrs;
     canvasAttrs.PlatformDefaults().Defaults().EndList(); 
 
-    mainFrame* firstFrame = new mainFrame(nullptr,wxT("DaemonSlayer"));
+    mainFrame* firstFrame = new mainFrame(nullptr,wxT("MazeRunner"));
     GLCanvas* canvas = new GLCanvas(firstFrame,args);
 
     testSizer->Add(canvas,1,wxGROW);

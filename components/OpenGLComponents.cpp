@@ -5,6 +5,74 @@
 #include <iostream>
 #include <fstream>
 
+#define GLDisplayErrors() GLDisplayErrors_(__FILE__,__LINE__)
+
+static void GLClearError(){
+    while (glGetError());
+};
+
+static void GLDisplayErrors_(const char* file, int line){
+    std::string errorMessage;
+    while (GLenum errorCode = glGetError())
+    {
+        switch (errorCode)
+        {
+            case GL_NO_ERROR: errorMessage = "No Errors";
+            case GL_INVALID_VALUE:                 errorMessage = "INVALID_VALUE"; break;
+            case GL_INVALID_OPERATION:             errorMessage = "INVALID_OPERATION"; break;
+            case GL_STACK_OVERFLOW:                errorMessage = "STACK_OVERFLOW"; break;
+            case GL_STACK_UNDERFLOW:               errorMessage = "STACK_UNDERFLOW"; break;
+            case GL_OUT_OF_MEMORY:                 errorMessage = "OUT_OF_MEMORY"; break;
+            case GL_INVALID_FRAMEBUFFER_OPERATION: errorMessage = "INVALID_FRAMEBUFFER_OPERATION"; break;
+            default: break;
+        }
+        std::cout << "Open GL error: " << errorMessage  << " on " << line << '\n';
+    };
+
+    
+};
+
+static uint32_t* makeCircleIB(int numVertices)
+{
+    if(numVertices > 500 or numVertices < 2){
+        throw std::invalid_argument("Inappropriate angular seperation: Not within range (0,500]");
+    };
+
+    uint32_t* indexBufferArray = new uint32_t[3*numVertices];
+    for(int i = 0;i<(numVertices-1);i++){
+        *(indexBufferArray + 3*i) = 0;
+        *(indexBufferArray + 3*i + 1) = i+1; 
+        *(indexBufferArray + 3*i + 2) = (i != numVertices - 2) ? i+2 : 1; 
+    };
+    /* Returns 3x the number of triangles
+    Number of triangles formed = numVertices - 2 */
+    return indexBufferArray;
+};
+
+static float* makeCircleVB(float x_origin, float y_origin, float radius, int angularSeperation)
+{
+    /* Uses the r^2 = x^2 + y^2  equation to calculate the displcement of 
+    a circle from its origin */
+    (angularSeperation % 2) == 1 ? angularSeperation += 1 : angularSeperation;
+    if(angularSeperation > 500 or angularSeperation < 2){
+        throw std::invalid_argument("Inappropriate angular seperation: Not within range (0,500]");
+    };
+    float* vertexBufferArray = new float[2 * (angularSeperation+1)];
+
+    *(vertexBufferArray) = x_origin;
+    *(vertexBufferArray+1) = y_origin;
+
+    for(int i =0; i < 2*(angularSeperation);i+=2)
+    {
+        
+        // DO NOT USE 2*pi as incrementing index 'i' are all multiples of 2
+        *(vertexBufferArray + i + 2) = radius*sinf(M_PI*(i/float (angularSeperation)));
+        *(vertexBufferArray + i + 3) = radius*cosf(M_PI*(i/float (angularSeperation)));
+    };
+    //21 pairs of vertex buffers are returned due to 20 points on the circumference and 1 origin
+    return vertexBufferArray;
+};
+
 static std::string readFile(std::string filePath)
 {
     std::string contents,line = "";
@@ -78,6 +146,7 @@ public:
     float getHeight(){return (wxWindow::GetSize().y * wxWindow::GetContentScaleFactor());};
     float getWidth(){return (wxWindow::GetSize().x * wxWindow::GetContentScaleFactor());};
 
+
     // User Interactions
     void leftClick(wxMouseEvent& e);
     void mouseMoved(wxMouseEvent& e);
@@ -118,20 +187,19 @@ void GLCanvas::make2DViewPort(int topleft_x, int topleft_y, int bottomrigth_x, i
 void GLCanvas::render(wxPaintEvent& e){
     if(!wxWindowBase::IsShown()){return;};
 
-
     wxGLCanvas::SetCurrent(*context);
     wxPaintDC(this);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     make2DViewPort(0,0,getWidth(),getHeight());
+
     glLoadIdentity();
 
-
-    float positions[6] = {
-        -1.0f , 0.0f,
-        0.0f , 1.0f,
-        0.0f,0.0f
-    };
+    const int numPointsOnCircumference = 200;
+    const float playerRadius = 0.1;
+    float* positions = makeCircleVB(0.0,0.0,playerRadius,numPointsOnCircumference);
+    //There are 21 points including the center of the circle
+    uint32_t* indexBuffer = makeCircleIB(numPointsOnCircumference + 1);
 
     unsigned int vao;
     glGenVertexArrays(1,&vao);
@@ -140,7 +208,12 @@ void GLCanvas::render(wxPaintEvent& e){
     unsigned int buffer;
     glGenBuffers(1,&buffer);
     glBindBuffer(GL_ARRAY_BUFFER,buffer);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(positions),positions,GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,sizeof(float)*2*(numPointsOnCircumference+1),positions,GL_STATIC_DRAW);
+
+    unsigned int ibo;
+    glGenBuffers(1,&ibo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(uint32_t)*3*numPointsOnCircumference,indexBuffer,GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0,2, GL_FLOAT,GL_FALSE, 2 * sizeof(float),0);
@@ -150,7 +223,11 @@ void GLCanvas::render(wxPaintEvent& e){
     unsigned int shader = makeShaders(vertexShader,fragmentShader);
     glUseProgram(shader);
 
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    /* Determines the number of triangles to draw based on the 
+    number of points on the circumference */
+    
+    glDrawElements(GL_TRIANGLES,3*numPointsOnCircumference,GL_UNSIGNED_INT,nullptr);
 
     // std::cout << getWidth() << '\n';
     // std::cout << getHeight() << '\n';

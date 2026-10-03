@@ -1,11 +1,13 @@
 #include "wx/wx.h"
 #include "wx/glcanvas.h"
 #include "OpenGL/gl3.h"
-// #include "OpenGL/glu.h"
 #include <iostream>
 #include <fstream>
 
 #define GLDisplayErrors() GLDisplayErrors_(__FILE__,__LINE__)
+
+static float x_pos = -0.5;
+static float y_pos = -0.5;
 
 static void GLClearError(){
     while (glGetError());
@@ -66,8 +68,8 @@ static float* makeCircleVB(float x_origin, float y_origin, float radius, int ang
     {
         
         // DO NOT USE 2*pi as incrementing index 'i' are all multiples of 2
-        *(vertexBufferArray + i + 2) = radius*sinf(M_PI*(i/float (angularSeperation)));
-        *(vertexBufferArray + i + 3) = radius*cosf(M_PI*(i/float (angularSeperation)));
+        *(vertexBufferArray + i + 2) = x_origin + radius*sinf(M_PI*(i/float (angularSeperation)));
+        *(vertexBufferArray + i + 3) = y_origin + radius*cosf(M_PI*(i/float (angularSeperation)));
     };
     //21 pairs of vertex buffers are returned due to 20 points on the circumference and 1 origin
     return vertexBufferArray;
@@ -159,6 +161,8 @@ GLCanvas::GLCanvas(wxFrame* parent, int* args) : wxGLCanvas(parent,wxID_ANY,args
     context = new wxGLContext(this,nullptr,&cxtAttrs);
     this->SetCurrent(*context);
 
+    std::cout << glGetString(GL_VERSION)<< std::endl;
+
     if(!context->IsOK()){
         std::cout << "Context not okay \n";
     };
@@ -197,7 +201,7 @@ void GLCanvas::render(wxPaintEvent& e){
 
     const int numPointsOnCircumference = 200;
     const float playerRadius = 0.1;
-    float* positions = makeCircleVB(0.0,0.0,playerRadius,numPointsOnCircumference);
+    float* positions = makeCircleVB(x_pos,y_pos,playerRadius,numPointsOnCircumference);
     //There are 21 points including the center of the circle
     uint32_t* indexBuffer = makeCircleIB(numPointsOnCircumference + 1);
 

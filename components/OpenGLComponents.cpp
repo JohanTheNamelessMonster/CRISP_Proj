@@ -6,8 +6,47 @@
 
 #define GLDisplayErrors() GLDisplayErrors_(__FILE__,__LINE__)
 
-static float x_pos = -0.5;
-static float y_pos = -0.5;
+static float x_pos = -0.0f;
+static float y_pos = -0.0f;
+static const int numPointsOnCircumference = 200;
+static const float playerRadius = 0.1;
+static float permitableDistance[2][2] = { /*{
+    {Left,Right}
+    {Down,Up}
+    }*/
+    {1.0f - (playerRadius),1.0f - (playerRadius)},
+    {1.0f - (playerRadius),1.0f - (playerRadius)}
+};
+enum Direction {HORIZONTAL=0,VERTICAL=1};
+struct Obstacle{
+    float x_uleft;    //Upper left x co-ordinate
+    float y_uleft;    //Upper left y co-ordinate
+    float x_bright;   //Bottom right x co-ordinate
+    float y_bright;   //Bottom right y co-ordinate
+};
+
+Obstacle* obstacles = new Obstacle[1];
+
+
+static bool withinBounds(Obstacle* obstacles,int obstacleCount,float new_x,float new_y)
+{
+    //horizontalCollisionZone_1
+    // float permitableDistance[2][2] = { /*{
+    //     {Left,Right}
+    //     {Down,Up}
+    //     }*/
+    //     {1.0f - (playerRadius),1.0f - (playerRadius)},
+    //     {1.0f - (playerRadius),1.0f - (playerRadius)}
+    // };
+    for(int i = 0; i < obstacleCount;i++){
+        bool horizontallyContained = ((obstacles+i)->x_uleft <= new_x) && ((obstacles+i)->x_bright >= new_x);
+        bool verticallyContained = ((obstacles+i)->y_bright <= new_y) && ((obstacles+i)->y_uleft >= new_y);
+        if(horizontallyContained && verticallyContained){
+            return false;
+        };
+    };
+    return true;
+};
 
 static void GLClearError(){
     while (glGetError());
@@ -19,7 +58,7 @@ static void GLDisplayErrors_(const char* file, int line){
     {
         switch (errorCode)
         {
-            case GL_NO_ERROR: errorMessage = "No Errors";
+            case GL_NO_ERROR:                      errorMessage = "No Errors";
             case GL_INVALID_VALUE:                 errorMessage = "INVALID_VALUE"; break;
             case GL_INVALID_OPERATION:             errorMessage = "INVALID_OPERATION"; break;
             case GL_STACK_OVERFLOW:                errorMessage = "STACK_OVERFLOW"; break;
@@ -64,12 +103,12 @@ static float* makeCircleVB(float x_origin, float y_origin, float radius, int ang
     *(vertexBufferArray) = x_origin;
     *(vertexBufferArray+1) = y_origin;
 
-    for(int i =0; i < 2*(angularSeperation);i+=2)
+    for(int i=2; i < 2*(angularSeperation + 1);i+=2)
     {
         
         // DO NOT USE 2*pi as incrementing index 'i' are all multiples of 2
-        *(vertexBufferArray + i + 2) = x_origin + radius*sinf(M_PI*(i/float (angularSeperation)));
-        *(vertexBufferArray + i + 3) = y_origin + radius*cosf(M_PI*(i/float (angularSeperation)));
+        *(vertexBufferArray + i) = x_origin + radius*sinf(M_PI*(i/float (angularSeperation)));
+        *(vertexBufferArray + i + 1) = y_origin + radius*cosf(M_PI*(i/float (angularSeperation)));
     };
     //21 pairs of vertex buffers are returned due to 20 points on the circumference and 1 origin
     return vertexBufferArray;
@@ -125,7 +164,7 @@ static unsigned int makeShaders(const std::string &vertexShader, const std::stri
     if (!linkSuccess) {
         int length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-        char* message = (char*)alloca(length * sizeof(char));
+        char* message = (char*) alloca(length * sizeof(char));
         glGetProgramInfoLog(program, length, &length, message);
         std::cout << "Failed to link program:\n" << message;
         glValidateProgram(program);
@@ -169,6 +208,7 @@ GLCanvas::GLCanvas(wxFrame* parent, int* args) : wxGLCanvas(parent,wxID_ANY,args
 
     Bind(wxEVT_PAINT,&GLCanvas::render,this,wxID_ANY);
     Bind(wxEVT_SIZE,&GLCanvas::reDraw,this,wxID_ANY);
+    Bind(wxEVT_KEY_DOWN,&GLCanvas::keyPress,this,wxID_ANY);
 }
 
 void GLCanvas::make2DViewPort(int topleft_x, int topleft_y, int bottomrigth_x, int bottomrigth_y){
@@ -188,22 +228,51 @@ void GLCanvas::make2DViewPort(int topleft_x, int topleft_y, int bottomrigth_x, i
     // glLoadIdentity();
 };
 
-void GLCanvas::render(wxPaintEvent& e){
-    if(!wxWindowBase::IsShown()){return;};
-
-    wxGLCanvas::SetCurrent(*context);
-    wxPaintDC(this);
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    make2DViewPort(0,0,getWidth(),getHeight());
-
-    glLoadIdentity();
-
-    const int numPointsOnCircumference = 200;
-    const float playerRadius = 0.1;
+static void drawScreen(wxGLCanvas *parent)
+{
+    glClear(GL_COLOR_BUFFER_BIT);
     float* positions = makeCircleVB(x_pos,y_pos,playerRadius,numPointsOnCircumference);
+
+    //Delete this section
+    float pllgramPos[] = {
+        -0.5f,-0.5f,
+        -1.0f,-0.5f,
+        -1.0f,-1.0f,
+        -0.5f,-1.0f
+    };
+    obstacles[0].x_bright = -0.5f;
+    obstacles[0].y_bright = -1.0f;
+    obstacles[0].x_uleft = -1.0f;
+    obstacles[0].y_uleft = -0.5f;
+
+    for(int i = 0; i<(sizeof(pllgramPos)/sizeof(float));i++){
+        *(positions+(2*(numPointsOnCircumference+1))+i) = pllgramPos[i];
+    };
+
+    // for(int i = 0;i <2*(numPointsOnCircumference+1. +4); i+=2){
+    //     std::cout << (i/2) <<": " << *(positions+i) << " , " << *(positions + i +1) << std::endl;
+    // };
+
+    //Until Here
+
     //There are 21 points including the center of the circle
     uint32_t* indexBuffer = makeCircleIB(numPointsOnCircumference + 1);
+
+    //Delete this section
+    uint32_t pllGramIB[] = {
+        201,202,203,
+        201,203,204
+    };
+
+    for(int i = 0; i<6;i++){
+        *(indexBuffer+3*(numPointsOnCircumference)+i) = pllGramIB[i];
+    };
+
+    // for(int i = 0;i <3*(numPointsOnCircumference + 2); i+=3){
+    //     std::cout << (i/3) <<": " << *(indexBuffer+i) << " , " << *(indexBuffer + i +1) << " , " << *(indexBuffer + i +2) << std::endl;
+    // };
+
+    //Until Here
 
     unsigned int vao;
     glGenVertexArrays(1,&vao);
@@ -212,30 +281,87 @@ void GLCanvas::render(wxPaintEvent& e){
     unsigned int buffer;
     glGenBuffers(1,&buffer);
     glBindBuffer(GL_ARRAY_BUFFER,buffer);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(float)*2*(numPointsOnCircumference+1),positions,GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,sizeof(float)*(2*(numPointsOnCircumference+1)+8),positions,GL_STATIC_DRAW);
 
     unsigned int ibo;
     glGenBuffers(1,&ibo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(uint32_t)*3*numPointsOnCircumference,indexBuffer,GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(uint32_t)*(3*numPointsOnCircumference + 6),indexBuffer,GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0,2, GL_FLOAT,GL_FALSE, 2 * sizeof(float),0);
+
+
+    /* Determines the number of triangles to draw based on the 
+    number of points on the circumference */
+    
+    glDrawElements(GL_TRIANGLES,3*numPointsOnCircumference + 6,GL_UNSIGNED_INT,nullptr);
+
+    // std::cout << getWidth() << '\n';
+    // std::cout << getHeight() << '\n';
+    // withinBounds(x_pos,(y_pos+playerRadius+0.02f),900,900);
+
+
+    glFlush();
+    parent->SwapBuffers();
+    delete[] positions;
+    delete[] indexBuffer;
+    glDeleteVertexArrays(1,&vao);
+    glDeleteBuffers(1,&ibo);
+    glDeleteBuffers(1,&buffer);
+};
+
+void GLCanvas::render(wxPaintEvent& e){
+    if(!wxWindowBase::IsShown()){return;};
+
+    wxGLCanvas::SetCurrent(*context);
+    wxPaintDC(this);
+
+    make2DViewPort(0,0,getWidth(),getHeight());
+
+    glLoadIdentity();
 
     std::string vertexShader = readFile("../shaders/vertexShader.txt");
     std::string fragmentShader = readFile("../shaders/fragmentShader.txt");
     unsigned int shader = makeShaders(vertexShader,fragmentShader);
     glUseProgram(shader);
 
+    drawScreen(this);
+    glDeleteProgram(shader);
 
-    /* Determines the number of triangles to draw based on the 
-    number of points on the circumference */
-    
-    glDrawElements(GL_TRIANGLES,3*numPointsOnCircumference,GL_UNSIGNED_INT,nullptr);
-
-    // std::cout << getWidth() << '\n';
-    // std::cout << getHeight() << '\n';
-
-    glFlush();
-    SwapBuffers();
 };
+
+void GLCanvas::keyPress(wxKeyEvent& e){
+    wxChar keyVal = e.GetKeyCode();
+    bool redrawScreen = false;
+    float speed = 0.05;
+    switch (keyVal)
+    {
+    case 87:
+        y_pos += (((y_pos + playerRadius+0.02f) <= 1) && withinBounds(obstacles,1,x_pos,(y_pos+playerRadius+speed))) ? speed : 0;
+        redrawScreen = true;
+        // withinBounds( x_pos,(y_pos+playerRadius),450,450);
+        break;
+    case 83:
+        y_pos -= (((y_pos - playerRadius) >= -1) && withinBounds(obstacles,1,x_pos,(y_pos-playerRadius-speed))) ? speed : 0;
+        redrawScreen = true;
+        // withinBounds( x_pos,(y_pos-playerRadius),450,450);
+        break;
+    case 65:
+        x_pos -= (((x_pos - playerRadius) >= -1) && withinBounds(obstacles,1,(x_pos-playerRadius-speed),y_pos)) ? speed : 0;
+        redrawScreen = true;
+        // withinBounds((x_pos - playerRadius),y_pos,450,450);
+        break;
+    case 68:
+        x_pos += (((x_pos + playerRadius) <= 1) && withinBounds(obstacles,1,(x_pos+playerRadius+speed),y_pos)) ? speed : 0;
+        redrawScreen = true;
+        // withinBounds((x_pos + playerRadius),y_pos,450,450);
+        break;
+    default:
+        break;
+    }
+
+    if(redrawScreen){
+        drawScreen(this);
+    };
+}

@@ -6,17 +6,29 @@
 
 #define GLDisplayErrors() GLDisplayErrors_(__FILE__,__LINE__)
 
+class mazeNode
+{
+public:
+    mazeNode* nextPointer;
+    mazeNode* findLastNode();
+    int gridLocation[2];        //(x,y) Cartesian Coordinates on a plane
+};
+
+mazeNode* mazeNode::findLastNode(){
+    //Return last node
+    mazeNode* lastNode = headPointer;
+    while (lastNode->nextPointer != nullptr){
+        lastNode = lastNode->nextPointer;
+    };
+    return lastNode;
+}
+
+static mazeNode* headPointer;
+
 static float x_pos = -0.0f;
 static float y_pos = -0.0f;
 static const int numPointsOnCircumference = 200;
 static const float playerRadius = 0.1;
-static float permitableDistance[2][2] = { /*{
-    {Left,Right}
-    {Down,Up}
-    }*/
-    {1.0f - (playerRadius),1.0f - (playerRadius)},
-    {1.0f - (playerRadius),1.0f - (playerRadius)}
-};
 enum Direction {HORIZONTAL=0,VERTICAL=1};
 struct Obstacle{
     float x_uleft;    //Upper left x co-ordinate
@@ -297,10 +309,6 @@ static void drawScreen(wxGLCanvas *parent)
     
     glDrawElements(GL_TRIANGLES,3*numPointsOnCircumference + 6,GL_UNSIGNED_INT,nullptr);
 
-    // std::cout << getWidth() << '\n';
-    // std::cout << getHeight() << '\n';
-    // withinBounds(x_pos,(y_pos+playerRadius+0.02f),900,900);
-
 
     glFlush();
     parent->SwapBuffers();
@@ -338,24 +346,20 @@ void GLCanvas::keyPress(wxKeyEvent& e){
     switch (keyVal)
     {
     case 87:
-        y_pos += (((y_pos + playerRadius+0.02f) <= 1) && withinBounds(obstacles,1,x_pos,(y_pos+playerRadius+speed))) ? speed : 0;
+        y_pos += (((y_pos + playerRadius+0.02f) <= 1) && withinBounds(obstacles,1,x_pos,(y_pos+playerRadius))) ? speed : 0;
         redrawScreen = true;
-        // withinBounds( x_pos,(y_pos+playerRadius),450,450);
         break;
     case 83:
-        y_pos -= (((y_pos - playerRadius) >= -1) && withinBounds(obstacles,1,x_pos,(y_pos-playerRadius-speed))) ? speed : 0;
+        y_pos -= (((y_pos - playerRadius) >= -1) && withinBounds(obstacles,1,x_pos,(y_pos-playerRadius))) ? speed : 0;
         redrawScreen = true;
-        // withinBounds( x_pos,(y_pos-playerRadius),450,450);
         break;
     case 65:
-        x_pos -= (((x_pos - playerRadius) >= -1) && withinBounds(obstacles,1,(x_pos-playerRadius-speed),y_pos)) ? speed : 0;
+        x_pos -= (((x_pos - playerRadius) >= -1) && withinBounds(obstacles,1,(x_pos-playerRadius),y_pos)) ? speed : 0;
         redrawScreen = true;
-        // withinBounds((x_pos - playerRadius),y_pos,450,450);
         break;
     case 68:
-        x_pos += (((x_pos + playerRadius) <= 1) && withinBounds(obstacles,1,(x_pos+playerRadius+speed),y_pos)) ? speed : 0;
+        x_pos += (((x_pos + playerRadius) <= 1) && withinBounds(obstacles,1,(x_pos+playerRadius),y_pos)) ? speed : 0;
         redrawScreen = true;
-        // withinBounds((x_pos + playerRadius),y_pos,450,450);
         break;
     default:
         break;

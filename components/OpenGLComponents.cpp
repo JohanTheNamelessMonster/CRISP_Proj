@@ -3,16 +3,38 @@
 #include "OpenGL/gl3.h"
 #include <iostream>
 #include <fstream>
-
+// #include "mazeMaker.hpp"
 #define GLDisplayErrors() GLDisplayErrors_(__FILE__,__LINE__)
 
+//Here
+static const int meshSize = 10;
+
+enum cardinals {NORTH,SOUTH,EAST,WEST};
 class mazeNode
 {
-public:
-    mazeNode* nextPointer;
-    mazeNode* findLastNode();
+private:
     int gridLocation[2];        //(x,y) Cartesian Coordinates on a plane
+    bool locationLock = false;
+    bool isTarget = false;
+public:
+    bool directions[4] = {false,false,false,false};
+    mazeNode* nextPointer = nullptr;
+    mazeNode* findLastNode();
+    void setGridCoordinate(int x, int y);
+    int* getGridCoordinates(){return gridLocation;};
+    void exploredDirections(cardinals direction){directions[direction] = true;};
+    void makeTarget(){isTarget = true;};
 };
+
+void mazeNode::setGridCoordinate(int x, int y){
+    if(!locationLock){
+        gridLocation[0] = x;
+        gridLocation[1] = y;
+        locationLock = true;
+    };
+};
+
+mazeNode* headPointer;
 
 mazeNode* mazeNode::findLastNode(){
     //Return last node
@@ -23,7 +45,126 @@ mazeNode* mazeNode::findLastNode(){
     return lastNode;
 }
 
-static mazeNode* headPointer;
+void makeMaze(){
+
+
+    //Choose an initial node and assign its pointer to head
+    mazeNode initialNode;
+    initialNode.setGridCoordinate(0,0);
+    headPointer = &initialNode;
+
+
+    //Create a node that can be regularly altered
+    mazeNode *currentNode = (headPointer);
+
+    //Choose a final grid position:
+    srand(time(NULL));
+    mazeNode finalNode;
+    finalNode.setGridCoordinate(rand()%10, rand()%10);
+
+    std::cout << initialNode.nextPointer << " | " << *(initialNode.getGridCoordinates()) << " | " << *(initialNode.getGridCoordinates() + 1) << std::endl;
+    std::cout << finalNode.nextPointer << " | " << *(finalNode.getGridCoordinates()) << " | " << *(finalNode.getGridCoordinates() + 1) << std::endl;
+
+
+    //Loop around until the final node has been found.
+    bool x_match = *(currentNode->getGridCoordinates()) == *(finalNode.getGridCoordinates());
+    bool y_match = *(currentNode->getGridCoordinates() + 1) == *(finalNode.getGridCoordinates() +1);
+
+    int vGain, hGain,counter = 0;
+    while(!(x_match && y_match)){
+        counter+=1;
+        std::cout << *(currentNode->getGridCoordinates()) << " | " << *(currentNode->getGridCoordinates()+1) << std::endl;
+        vGain = 0;
+        hGain = 0;
+        //Create the next node
+        mazeNode* newNode = new mazeNode;
+        int randDir = rand()%4;
+        while(currentNode->directions[randDir]){
+            // std::cout << "My heart is breaking" << std::endl;
+            for(int i =0; i < 4; i++){
+                std::cout << currentNode->directions[i];
+            };
+            std::cout << std::endl;
+            randDir = rand()%4;
+        }
+
+        std::cout << randDir <<std::endl;
+
+        cardinals opp_dir;
+        switch (randDir){
+        case (1):                           // SOUTH
+            if (*(currentNode->getGridCoordinates() + 1) != 9){
+                vGain = 1;
+                opp_dir = NORTH;
+            }else{
+                vGain = -1;
+                randDir = 0;
+                opp_dir = SOUTH;
+            };
+            break;
+        case 0:                            // NORTH
+            if (*(currentNode->getGridCoordinates() + 1) != 0){
+                vGain = -1;
+                opp_dir = SOUTH;
+            }else{
+                vGain = 1;
+                randDir = 1;
+                opp_dir = NORTH;
+            };
+            break;
+        case 2:                             // East
+            if (*(currentNode->getGridCoordinates()) != 9){
+                hGain = 1;
+                opp_dir = WEST;
+            }else{
+                hGain = -1;
+                randDir = 3;
+                opp_dir = EAST;
+            };
+            break;
+        case 3:                             // West
+            if (*(currentNode->getGridCoordinates()) != 0){
+                hGain = -1;
+                opp_dir = EAST;
+            }else{
+                hGain = 1;
+                randDir = 2;
+                opp_dir = WEST;
+            };
+            break;
+        };
+
+        currentNode->exploredDirections((cardinals) randDir);
+        newNode->exploredDirections(opp_dir);
+        std::cout << "-----------------------------------" <<std::endl;
+        std::cout << "Values: " << vGain << " | " << hGain << std::endl;
+        std::cout << "-----------------------------------" <<std::endl;
+
+        
+        newNode->setGridCoordinate((currentNode->getGridCoordinates()[0]) + hGain,(currentNode->getGridCoordinates()[1]) + vGain);
+
+        //Update next pointer and loop conditions
+        x_match = (currentNode->getGridCoordinates()[0]) == (finalNode.getGridCoordinates()[0]);
+        y_match = (currentNode->getGridCoordinates()[1]) == (finalNode.getGridCoordinates()[1]);
+        currentNode->nextPointer = newNode;
+        currentNode = (newNode);
+
+    };
+
+    std::cout << initialNode.nextPointer << std::endl;
+    // std::cout << headPointer << std::endl;
+
+    mazeNode* nextNode = headPointer;
+    while(nextNode->nextPointer != nullptr){
+        std::cout << nextNode->nextPointer << " | " << *(nextNode->getGridCoordinates()) << " | " << *(nextNode->getGridCoordinates() + 1) << std::endl;
+        nextNode = nextNode->nextPointer;
+    };
+    std::cout << nextNode->nextPointer << " | " << *(nextNode->getGridCoordinates()) << " | " << *(nextNode->getGridCoordinates() + 1) << std::endl;
+
+    
+
+};
+//Until Here
 
 static float x_pos = -0.0f;
 static float y_pos = -0.0f;
@@ -207,6 +348,7 @@ public:
 };
 
 GLCanvas::GLCanvas(wxFrame* parent, int* args) : wxGLCanvas(parent,wxID_ANY,args,wxDefaultPosition,wxDefaultSize,wxBORDER_DOUBLE){
+    makeMaze();
     wxGLContextAttrs cxtAttrs;
     cxtAttrs.CoreProfile().OGLVersion(4,1).ForwardCompatible().EndList();
     context = new wxGLContext(this,nullptr,&cxtAttrs);
@@ -326,6 +468,7 @@ void GLCanvas::render(wxPaintEvent& e){
     wxPaintDC(this);
 
     make2DViewPort(0,0,getWidth(),getHeight());
+
 
     glLoadIdentity();
 

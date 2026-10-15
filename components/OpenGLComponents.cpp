@@ -287,7 +287,7 @@ struct Obstacle{
     float y_bright;   //Bottom right y co-ordinate
 };
 
-Obstacle* obstacles = new Obstacle[8];
+Obstacle* obstacles = new Obstacle[4];
 
 
 static bool withinBounds(Obstacle* obstacles,int obstacleCount,float new_x,float new_y)
@@ -319,7 +319,7 @@ A** mergeArrays(A head, A** tail, int rows, int cols){
 template<typename T>
 T** cartesianComb(T* list1, T* list2,int length){
     
-    std::cout << length <<std::endl;
+    // std::cout << length <<std::endl;
 
     // Base Case: Both list1 and list 2 have one element each. Returns a 2D array of both elements in seperate arrays
     // Recursive Case: 
@@ -330,52 +330,89 @@ T** cartesianComb(T* list1, T* list2,int length){
         };
         response[0][0] = list1[0];
         response[1][0] = list2[0];
-        std::cout << response[0][0] <<std::endl;
-        std::cout << response[1][0] <<std::endl;
+        // std::cout << response[0][0] <<std::endl;
+        // std::cout << response[1][0] <<std::endl;
         return response;
     }else{
         T tail1[length - 1];
         T tail2[length - 1];
         for(T i = 1; i< length;i++){
-            tail1[i - 1] = list1[i];
-            tail2[i - 1] = list2[i];
+            tail1[(int) i - 1] = list1[(int) i];
+            tail2[(int) i - 1] = list2[(int) i];
         };
         T** cartComb = cartesianComb(tail1,tail2,length - 1);
         T** resOne = mergeArrays(list1[0],cartComb,(int) pow(2,length-1),length - 1);
-        // std::cout << "Res 1: " << std::endl;
-        // for(int i = 0; i < (int) pow(2,length - 1); i++){
-        //     for(int j = 0; j < length - 1;j++){
-        //         std::cout << *(*(resOne + i) + j) << " | ";
-        //     };
-        //     std::cout << std::endl;
-        // };
         T** resTwo = mergeArrays(list2[0],cartComb,(int) pow(2,length-1),length - 1);
         T** response = new T*[(int) pow(2,length) + 1];
         for(int i = 0; i< (int) (pow(2,length)) ;i++){
             response[i] = (i < pow(2,length - 1)) ? resOne[i] : resTwo[i - ((int)pow(2,length - 1))];
             for(int j = 0;j < length;j++){
-                std::cout << response[i][j] ;
+                // std::cout << response[i][j] ;
             };
-            std::cout << "- " << i<< std::endl;
+            // std::cout << "- " << i<< std::endl;
         };
 
-        std::cout << " ------------------------------ " << std::endl;
+        // std::cout << " ------------------------------ " << std::endl;
 
         return response;
     };
 
 };
-
-void drawObstacles(Obstacle* obstacles, float &positions, uint32_t &indexes, mazeNode &currentNode){
-    obstacles[0] = {-1.0f,-1.0f,-0.5f,-0.5f};
-    obstacles[1] = {0.5,-1,1,-0.5};
-    obstacles[2] = {-1.0f,0.5f,-0.5f,1.0f};
-    obstacles[3] = {0.5f,0.5f,1.0f,1.0f};
-
-    for(int i = 0; i< 4;i++){
-        ;
+template <typename T>
+static T* foldAppend2D(T** array, int rows, int cols){
+    T* resultArr = new T[rows * cols];
+    for(int i = 0; i< rows;i++){
+        for(int j =0;j<cols;j++){
+            resultArr[i*cols + j] = array[i][j];
+            // std::cout << (array[i][j]) << std::endl;
+        }
     };
+    return resultArr;
 };
+
+template <typename T>
+static T* foldAppend2D(T* array1, T* array2,int length1,int length2){
+    T* resultArray = new T[length1+length2];
+    for(int i = 0; i< length1; i++){
+        resultArray[i] = array1[i];
+    };
+    for(int i = 0; i< length2; i++){
+        resultArray[i + length1] = array2[i];
+    }
+    return resultArray;
+};
+
+static float* createCorners(){
+    obstacles[0] = {0.5,1,1,0.5};
+    obstacles[1] = {0.5,-0.5,1,-1};
+    obstacles[2] = {-1,-0.5,-0.5,-1};
+    obstacles[3] = {-1,1,-0.5,0.5};
+
+    int cornerflen = 0;
+    float* cornerf = new float[0];
+
+    for(int i = 0 ; i< 4; i++){
+        float arr1[2] = {obstacles[i].x_uleft,obstacles[i].y_uleft};
+        float arr2[2] = {obstacles[i].x_bright,obstacles[i].y_bright};
+        float** cornerArrays = cartesianComb(arr1,arr2,2);
+        cornerf = foldAppend2D(cornerf,foldAppend2D(cornerArrays,4,2),cornerflen,8);
+        cornerflen += 8;
+    };
+
+    return cornerf;
+
+};
+
+// void drawObstacles(Obstacle* obstacles, float &positions, uint32_t &indexes, mazeNode &currentNode){
+//     obstacles[0] = {-1.0f,-1.0f,-0.5f,-0.5f};
+//     obstacles[1] = {0.5,-1,1,-0.5};
+//     obstacles[2] = {-1.0f,0.5f,-0.5f,1.0f};
+//     obstacles[3] = {0.5f,0.5f,1.0f,1.0f};
+
+//     for(int i = 0; i< 4;i++){
+//         ;
+//     };
+// };
 
 static void GLClearError(){
     while (glGetError());
@@ -404,8 +441,8 @@ static void GLDisplayErrors_(const char* file, int line){
 
 static uint32_t* makeCircleIB(int numVertices)
 {
-    if(numVertices > 500 or numVertices < 2){
-        throw std::invalid_argument("Inappropriate angular seperation: Not within range (0,500]");
+    if(numVertices > 201 or numVertices < 2){
+        throw std::invalid_argument("Inappropriate angular seperation: Not within range (0,201]");
     };
 
     uint32_t* indexBufferArray = new uint32_t[3*numVertices];
@@ -468,11 +505,11 @@ static unsigned int compileShaders(const std::string &source, GLuint type)
         glGetShaderiv(id,GL_INFO_LOG_LENGTH,&length);
         char* message = (char *) alloca(length * sizeof(char));
         glGetShaderInfoLog(id,length,&length,message);
-        //std::cout << "Failed to compile" << (type == GL_VERTEX_SHADER ? " vertex " : " fragement ") << "shader \n";
-        //std::cout << message;
-        //std::cout << glGetString(GL_VERSION) << "\n";
-        //std::cout << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
-        // //std::cout << source << "\n";
+        std::cout << "Failed to compile" << (type == GL_VERTEX_SHADER ? " vertex " : " fragement ") << "shader \n";
+        std::cout << message;
+        std::cout << glGetString(GL_VERSION) << "\n";
+        std::cout << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
+        std::cout << source << "\n";
     };
 
 
@@ -525,17 +562,14 @@ public:
 
 GLCanvas::GLCanvas(wxFrame* parent, int* args) : wxGLCanvas(parent,wxID_ANY,args,wxDefaultPosition,wxDefaultSize,wxBORDER_DOUBLE){
     makeMaze();
-    int l1[3] = {1,2,3};
-    int l2[3] = {4,5,6};
-    int** cart = cartesianComb(l1,l2,3);
-    // for(int i =0; i < (int) pow(2,3-1);i++){
-    //     for(int j = 0; j < 3; j++){
-    //         //std::cout << cart[i][j] << " | ";
-    //     };
-    //     //std::cout << std::endl;
-    // };
-    // std::cout << **cart << std::endl;
-    // std::cout << *(*(cart + 1)) << std::endl;
+    float* corners = createCorners();
+    for(int i = 0; i < 4;i++){
+        for(int j = 0; j < 8; j+=2){
+            std::cout << "(" << *(corners + i*8 + j) << "," << *(corners + i*8 + j +1) << ") | ";
+        };
+        std::cout << std::endl;
+    };
+
     wxGLContextAttrs cxtAttrs;
     cxtAttrs.CoreProfile().OGLVersion(4,1).ForwardCompatible().EndList();
     context = new wxGLContext(this,nullptr,&cxtAttrs);
@@ -575,23 +609,14 @@ static void drawScreen(wxGLCanvas *parent)
     float* positions = makeCircleVB(x_pos,y_pos,playerRadius,numPointsOnCircumference);
 
     //Delete this section
-    float pllgramPos[] = {
-        -0.5f,-0.5f,
-        -1.0f,-0.5f,
-        -1.0f,-1.0f,
-        -0.5f,-1.0f
-    };
-    obstacles[0].x_bright = -0.5f;
-    obstacles[0].y_bright = -1.0f;
-    obstacles[0].x_uleft = -1.0f;
-    obstacles[0].y_uleft = -0.5f;
+    float* corners = createCorners();
 
-    for(int i = 0; i<(sizeof(pllgramPos)/sizeof(float));i++){
-        *(positions+(2*(numPointsOnCircumference+1))+i) = pllgramPos[i];
+    for(int i = 0; i<32;i++){
+        *(positions+(2*(numPointsOnCircumference+1))+i) = corners[i];
     };
 
-    for(int i = 0;i <2*(numPointsOnCircumference+1. +4); i+=2){
-        //std::cout << (i/2) <<": " << *(positions+i) << " , " << *(positions + i +1) << std::endl;
+    for(int i = 0; i < 2*(numPointsOnCircumference+1)+32;i+=2){
+        std::cout << (i/2) << ": "<< *(positions+i) << " | " << *(positions +i +1) << std::endl;
     };
 
     //Until Here
@@ -600,18 +625,21 @@ static void drawScreen(wxGLCanvas *parent)
     uint32_t* indexBuffer = makeCircleIB(numPointsOnCircumference + 1);
 
     //Delete this section
-    uint32_t pllGramIB[] = {
-        201,202,203,
-        201,203,204
+    uint32_t* pllGramIB = new uint32_t[24];
+    for(int i = 1; i<= 4; i++){
+        pllGramIB[6*(i-1) + 3] = numPointsOnCircumference + 4*(i);
+        pllGramIB[6*(i-1)] = numPointsOnCircumference + 4*(i) - 3;
+        pllGramIB[6*(i-1) + 1] = pllGramIB[6*(i-1) + 4] = numPointsOnCircumference + 4*(i) - 1;
+        pllGramIB[6*(i-1) + 2] = pllGramIB[6*(i-1) + 5] = numPointsOnCircumference + 4*(i) - 2;
     };
 
-    for(int i = 0; i<6;i++){
+    for(int i = 0; i<24;i++){
         *(indexBuffer+3*(numPointsOnCircumference)+i) = pllGramIB[i];
     };
 
-    // for(int i = 0;i <3*(numPointsOnCircumference + 2); i+=3){
-    //     //std::cout << (i/3) <<": " << *(indexBuffer+i) << " , " << *(indexBuffer + i +1) << " , " << *(indexBuffer + i +2) << std::endl;
-    // };
+    for(int i = 0; i < 3*(numPointsOnCircumference+8);i+=3){
+        std::cout << (i/3)<< ": " << *(indexBuffer + i) << " | " << *(indexBuffer + i + 1) << " | " << *(indexBuffer + i +2) << std::endl;
+    };
 
     //Until Here
 
@@ -622,12 +650,12 @@ static void drawScreen(wxGLCanvas *parent)
     unsigned int buffer;
     glGenBuffers(1,&buffer);
     glBindBuffer(GL_ARRAY_BUFFER,buffer);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(float)*(2*(numPointsOnCircumference+1)+8),positions,GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,sizeof(float)*(2*(numPointsOnCircumference+1)+32),positions,GL_STATIC_DRAW);
 
     unsigned int ibo;
     glGenBuffers(1,&ibo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(uint32_t)*(3*numPointsOnCircumference + 6),indexBuffer,GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(uint32_t)*(3*numPointsOnCircumference + 24),indexBuffer,GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0,2, GL_FLOAT,GL_FALSE, 2 * sizeof(float),0);
@@ -636,7 +664,7 @@ static void drawScreen(wxGLCanvas *parent)
     /* Determines the number of triangles to draw based on the 
     number of points on the circumference */
     
-    glDrawElements(GL_TRIANGLES,3*numPointsOnCircumference + 6,GL_UNSIGNED_INT,nullptr);
+    glDrawElements(GL_TRIANGLES,3*numPointsOnCircumference + 24,GL_UNSIGNED_INT,nullptr);
 
 
     glFlush();
@@ -676,19 +704,19 @@ void GLCanvas::keyPress(wxKeyEvent& e){
     switch (keyVal)
     {
     case 87:
-        y_pos += (((y_pos + playerRadius+0.02f) <= 1) && withinBounds(obstacles,1,x_pos,(y_pos+playerRadius))) ? speed : 0;
+        y_pos += (((y_pos + playerRadius+0.02f) <= 1) && withinBounds(obstacles,4,x_pos,(y_pos+playerRadius))) ? speed : 0;
         redrawScreen = true;
         break;
     case 83:
-        y_pos -= (((y_pos - playerRadius) >= -1) && withinBounds(obstacles,1,x_pos,(y_pos-playerRadius))) ? speed : 0;
+        y_pos -= (((y_pos - playerRadius) >= -1) && withinBounds(obstacles,4,x_pos,(y_pos-playerRadius))) ? speed : 0;
         redrawScreen = true;
         break;
     case 65:
-        x_pos -= (((x_pos - playerRadius) >= -1) && withinBounds(obstacles,1,(x_pos-playerRadius),y_pos)) ? speed : 0;
+        x_pos -= (((x_pos - playerRadius) >= -1) && withinBounds(obstacles,4,(x_pos-playerRadius),y_pos)) ? speed : 0;
         redrawScreen = true;
         break;
     case 68:
-        x_pos += (((x_pos + playerRadius) <= 1) && withinBounds(obstacles,1,(x_pos+playerRadius),y_pos)) ? speed : 0;
+        x_pos += (((x_pos + playerRadius) <= 1) && withinBounds(obstacles,4,(x_pos+playerRadius),y_pos)) ? speed : 0;
         redrawScreen = true;
         break;
     default:

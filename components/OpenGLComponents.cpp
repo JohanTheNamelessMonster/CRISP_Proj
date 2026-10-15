@@ -316,16 +316,17 @@ A** mergeArrays(A head, A** tail, int rows, int cols){
     return resArray;
 };
 
-int** cartesianComb(int* list1, int* list2,int length){
+template<typename T>
+T** cartesianComb(T* list1, T* list2,int length){
     
     std::cout << length <<std::endl;
 
     // Base Case: Both list1 and list 2 have one element each. Returns a 2D array of both elements in seperate arrays
     // Recursive Case: 
     if(length == 1){
-        int** response = new int*[2];
+        T** response = new T*[2];
         for(int i = 0; i<2; i++){
-            response[i] = new int[1];
+            response[i] = new T[1];
         };
         response[0][0] = list1[0];
         response[1][0] = list2[0];
@@ -333,14 +334,14 @@ int** cartesianComb(int* list1, int* list2,int length){
         std::cout << response[1][0] <<std::endl;
         return response;
     }else{
-        int tail1[length - 1];
-        int tail2[length - 1];
-        for(int i = 1; i< length;i++){
+        T tail1[length - 1];
+        T tail2[length - 1];
+        for(T i = 1; i< length;i++){
             tail1[i - 1] = list1[i];
             tail2[i - 1] = list2[i];
         };
-        int** cartComb = cartesianComb(tail1,tail2,length - 1);
-        int** resOne = mergeArrays(list1[0],cartComb,(int) pow(2,length-1),length - 1);
+        T** cartComb = cartesianComb(tail1,tail2,length - 1);
+        T** resOne = mergeArrays(list1[0],cartComb,(int) pow(2,length-1),length - 1);
         // std::cout << "Res 1: " << std::endl;
         // for(int i = 0; i < (int) pow(2,length - 1); i++){
         //     for(int j = 0; j < length - 1;j++){
@@ -348,8 +349,8 @@ int** cartesianComb(int* list1, int* list2,int length){
         //     };
         //     std::cout << std::endl;
         // };
-        int** resTwo = mergeArrays(list2[0],cartComb,(int) pow(2,length-1),length - 1);
-        int** response = new int*[(int) pow(2,length) + 1];
+        T** resTwo = mergeArrays(list2[0],cartComb,(int) pow(2,length-1),length - 1);
+        T** response = new T*[(int) pow(2,length) + 1];
         for(int i = 0; i< (int) (pow(2,length)) ;i++){
             response[i] = (i < pow(2,length - 1)) ? resOne[i] : resTwo[i - ((int)pow(2,length - 1))];
             for(int j = 0;j < length;j++){

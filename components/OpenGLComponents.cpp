@@ -23,14 +23,13 @@ public:
     mazeNode* findLastNode();
     void setGridCoordinate(int x, int y);
     int* getGridCoordinates(){return gridLocation;};
-    void exploredDirections(cardinals direction){directions[direction] = true;};
+    void exploredDirections(cardinals direction){directions[(int) direction] = true;};
     void makeTarget(){isTarget = true;};
     void directionInit(){
-        directions[0] = (gridLocation[0] == 0 ? true : false);
-        directions[1] = (gridLocation[0] == 9 ? true : false);
-        directions[2] = (gridLocation[1] == 9 ? true : false);
-        directions[3] = (gridLocation[1] == 0 ? true : false);
-
+        if(gridLocation[1] == 0) directions[0] = true;      // North
+        else if(gridLocation[1] == 9) directions[1] = true; // South
+        if(gridLocation[0] == 9) directions[2] = true;      // East
+        if(gridLocation[0] == 0) directions[3] = true;      // West
     };
 };
 
@@ -43,6 +42,8 @@ void mazeNode::setGridCoordinate(int x, int y){
 };
 
 static mazeNode* headPointer;
+static mazeNode* mutablePointer;
+static mazeNode* finalPointer;
 
 mazeNode* mazeNode::findLastNode(){
     //Return last node
@@ -53,10 +54,13 @@ mazeNode* mazeNode::findLastNode(){
     return lastNode;
 };
 
-static mazeNode * findNode(int x, int y){
+static mazeNode * findNode(int x, int y, bool logStuff = false){
+
+    if(logStuff){std::cout << x << " , " << y << std::endl;};
+
     mazeNode* currentNode = headPointer;
     if(currentNode == nullptr){return nullptr;};
-    while(currentNode->nextPointer != nullptr){
+    while(currentNode != nullptr){
         bool x_match = (currentNode->getGridCoordinates()[0] == x);
         bool y_match = (currentNode->getGridCoordinates()[1] == y);
         if(x_match && y_match){
@@ -148,26 +152,28 @@ static void makeMaze(){
 
 
     //Choose an initial node and assign its pointer to head
-    mazeNode initialNode;
-    initialNode.setGridCoordinate(0,0);
-    headPointer = &initialNode;
+    headPointer = new mazeNode;
+    headPointer->setGridCoordinate(0,0);
+    mutablePointer = headPointer;
+    // std::cout << initialNode.getGridCoordinates()[0] << initialNode.getGridCoordinates()[1] << std::endl;
 
+    mazeNode* actualParent = nullptr;
 
     //Create a node that can be regularly altered
     mazeNode *currentNode = (headPointer);
 
     //Choose a final grid position:
     srand(time(NULL));
-    mazeNode finalNode;
-    finalNode.setGridCoordinate(rand()%10, rand()%10);
+    finalPointer = new mazeNode;
+    finalPointer->setGridCoordinate(rand()%10, rand()%10);
 
     //std::cout << initialNode.nextPointer << " | " << *(initialNode.getGridCoordinates()) << " | " << *(initialNode.getGridCoordinates() + 1) << std::endl;
     //std::cout << finalNode.nextPointer << " | " << *(finalNode.getGridCoordinates()) << " | " << *(finalNode.getGridCoordinates() + 1) << std::endl;
 
 
     //Loop around until the final node has been found.
-    bool x_match = *(currentNode->getGridCoordinates()) == *(finalNode.getGridCoordinates());
-    bool y_match = *(currentNode->getGridCoordinates() + 1) == *(finalNode.getGridCoordinates() +1);
+    bool x_match = *(currentNode->getGridCoordinates()) == *(finalPointer->getGridCoordinates());
+    bool y_match = *(currentNode->getGridCoordinates() + 1) == *(finalPointer->getGridCoordinates() +1);
 
     int vGain, hGain,counter = 0;
     while(!(x_match && y_match)){
@@ -177,14 +183,8 @@ static void makeMaze(){
         hGain = 0;
         currentNode->directionInit();
         int randDir = rand()%4;
-        while(currentNode->directions[randDir] || boxedIn((cardinals)randDir,*(currentNode))){
-            // //std::cout << "My heart is breaking" << std::endl;
-            for(int i =0; i < 4; i++){
-                //std::cout << currentNode->directions[i];
-            };
-            //std::cout << std::endl;
-            randDir = rand()%4;
-        }
+
+        actualParent = nullptr;
 
         //std::cout << randDir <<std::endl;
 
@@ -247,30 +247,26 @@ static void makeMaze(){
 
         if(!condititon1){
             currentNode = nodeExists;
+            x_match = (currentNode->getGridCoordinates()[0]) == (finalPointer->getGridCoordinates()[0]);
+            y_match = (currentNode->getGridCoordinates()[1]) == (finalPointer->getGridCoordinates()[1]);
             continue;
         };
         
+        (currentNode->findLastNode())->nextPointer = newNode;
+
+
         newNode->setGridCoordinate((currentNode->getGridCoordinates()[0]) + hGain,(currentNode->getGridCoordinates()[1]) + vGain);
 
         //Update next pointer and loop conditions
-        x_match = (currentNode->getGridCoordinates()[0]) == (finalNode.getGridCoordinates()[0]);
-        y_match = (currentNode->getGridCoordinates()[1]) == (finalNode.getGridCoordinates()[1]);
-        currentNode->nextPointer = newNode;
+        x_match = (currentNode->getGridCoordinates()[0]) == (finalPointer->getGridCoordinates()[0]);
+        y_match = (currentNode->getGridCoordinates()[1]) == (finalPointer->getGridCoordinates()[1]);
         currentNode = (newNode);
 
     };
 
     // //std::cout << initialNode.nextPointer << std::endl;
     // //std::cout << headPointer << std::endl;
-
-    // mazeNode* nextNode = headPointer;
-    // while(nextNode->nextPointer != nullptr){
-    //     //std::cout << nextNode->nextPointer << " | " << *(nextNode->getGridCoordinates()) << " | " << *(nextNode->getGridCoordinates() + 1) << std::endl;
-    //     nextNode = nextNode->nextPointer;
-    // };
-    // //std::cout << nextNode->nextPointer << " | " << *(nextNode->getGridCoordinates()) << " | " << *(nextNode->getGridCoordinates() + 1) << std::endl;
-
-    
+    //std::cout << nextNode->nextPointer << " | " << *(nextNode->getGridCoordinates()) << " | " << *(nextNode->getGridCoordinates() + 1) << std::endl;
 
 };
 //Until Here
@@ -382,12 +378,14 @@ static T* foldAppend2D(T* array1, T* array2,int length1,int length2){
     return resultArray;
 };
 
-static float* createCorners(){
+static void resetCorners(){
     obstacles[0] = {0.5,1,1,0.5};
     obstacles[1] = {0.5,-0.5,1,-1};
     obstacles[2] = {-1,-0.5,-0.5,-1};
     obstacles[3] = {-1,1,-0.5,0.5};
+};
 
+static float* createCorners(){
     int cornerflen = 0;
     float* cornerf = new float[0];
 
@@ -400,6 +398,57 @@ static float* createCorners(){
     };
 
     return cornerf;
+
+};
+
+static void drawObstacles(mazeNode* layout){
+    // std::cout << (layout->getGridCoordinates()[0]) << " , " << (layout->getGridCoordinates()[0]);
+    for(int i = 0; i< 4; i++){
+        if(!layout->directions[i]){
+            switch (i)
+            {
+            case 0:
+                obstacles[0] = {-1.0f,1.0f,1.0f,0.5f};
+                std::cout << "North blocked" << std::endl;
+                break;
+            case 1:
+                obstacles[2] = {-1.0f,-0.5f,1.0f,-1.0f};
+                std::cout << "South blocked" << std::endl;
+                break;
+            case 2:
+                obstacles[3] = {0.5f,1.0f,1.0f,-1.0f};
+                std::cout << "East blocked" << std::endl;
+                break;
+            case 3:
+                obstacles[1] = {-1.0f,1.0f,-0.5f,-1.0f};
+                std::cout << "West blocked" << std::endl;
+                break;
+            default:
+                break;
+            }
+        };
+    };
+
+    for(int i = 0; i< 4; i++){
+        std::cout << layout->directions[i] << " | ";
+    };
+
+    std::cout << std::endl;
+
+    if(layout->getGridCoordinates()[0] == 0){
+        std::cout << "Hor 0 Trigerred" << std::endl;
+        obstacles[1] = {-1.0f,1.0f,-0.5f,-1.0f};
+    }else if(layout->getGridCoordinates()[0] == 9){
+        obstacles[3] = {0.5f,1.0f,1.0f,-1.0f};
+
+    };
+
+    if(layout->getGridCoordinates()[1] == 0){
+        std::cout << "Vert 0 Trigerred" << std::endl;
+        obstacles[0] = {-1.0f,1.0f,1.0f,0.5f};
+    }else if(layout->getGridCoordinates()[1] == 9){
+        obstacles[2] = {-1.0f,-0.5f,1.0f,-1.0f};
+    };
 
 };
 
@@ -562,23 +611,32 @@ public:
 
 GLCanvas::GLCanvas(wxFrame* parent, int* args) : wxGLCanvas(parent,wxID_ANY,args,wxDefaultPosition,wxDefaultSize,wxBORDER_DOUBLE){
     makeMaze();
-    float* corners = createCorners();
-    for(int i = 0; i < 4;i++){
-        for(int j = 0; j < 8; j+=2){
-            std::cout << "(" << *(corners + i*8 + j) << "," << *(corners + i*8 + j +1) << ") | ";
+    // std::cout << headPointer << std::endl;
+
+    mazeNode* nextNode = headPointer;
+    std::cout << finalPointer->nextPointer << " | " << *(finalPointer->getGridCoordinates()) << " | " << *(finalPointer->getGridCoordinates() + 1) << std::endl << std::endl;
+
+    while(nextNode->nextPointer != nullptr){
+        std::cout << std::endl;
+        for(int i = 0; i< 4; i++){
+            std::cout << nextNode->directions[i] << " | ";
         };
         std::cout << std::endl;
+        std::cout << nextNode->nextPointer << " | " << *(nextNode->getGridCoordinates()) << " | " << *(nextNode->getGridCoordinates() + 1) << std::endl;
+        nextNode = nextNode->nextPointer;
     };
 
+    resetCorners();
+    drawObstacles(headPointer);
     wxGLContextAttrs cxtAttrs;
     cxtAttrs.CoreProfile().OGLVersion(4,1).ForwardCompatible().EndList();
     context = new wxGLContext(this,nullptr,&cxtAttrs);
     this->SetCurrent(*context);
 
-    //std::cout << glGetString(GL_VERSION)<< std::endl;
+    std::cout << glGetString(GL_VERSION)<< std::endl;
 
     if(!context->IsOK()){
-        //std::cout << "Context not okay \n";
+        std::cout << "Context not okay \n";
     };
 
     Bind(wxEVT_PAINT,&GLCanvas::render,this,wxID_ANY);
@@ -588,19 +646,10 @@ GLCanvas::GLCanvas(wxFrame* parent, int* args) : wxGLCanvas(parent,wxID_ANY,args
 
 void GLCanvas::make2DViewPort(int topleft_x, int topleft_y, int bottomrigth_x, int bottomrigth_y){
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    // glEnable(GL_TEXTURE_2D);
-    // glEnable(GL_COLOR_MATERIAL);
     glEnable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-	
     glViewport(topleft_x, topleft_y, bottomrigth_x-topleft_x, bottomrigth_y-topleft_y);
-    // glMatrixMode(GL_PROJECTION);
-    // glLoadIdentity();
-    
-    // gluOrtho2D(topleft_x, bottomrigth_x, bottomrigth_y, topleft_y);
-    // glMatrixMode(GL_MODELVIEW);
-    // glLoadIdentity();
 };
 
 static void drawScreen(wxGLCanvas *parent)
@@ -608,18 +657,16 @@ static void drawScreen(wxGLCanvas *parent)
     glClear(GL_COLOR_BUFFER_BIT);
     float* positions = makeCircleVB(x_pos,y_pos,playerRadius,numPointsOnCircumference);
 
-    //Delete this section
     float* corners = createCorners();
 
     for(int i = 0; i<32;i++){
         *(positions+(2*(numPointsOnCircumference+1))+i) = corners[i];
     };
 
-    for(int i = 0; i < 2*(numPointsOnCircumference+1)+32;i+=2){
-        std::cout << (i/2) << ": "<< *(positions+i) << " | " << *(positions +i +1) << std::endl;
-    };
+    // for(int i = 0; i < 2*(numPointsOnCircumference+1)+32;i+=2){
+    //     std::cout << (i/2) << ": "<< *(positions+i) << " | " << *(positions +i +1) << std::endl;
+    // };
 
-    //Until Here
 
     //There are 21 points including the center of the circle
     uint32_t* indexBuffer = makeCircleIB(numPointsOnCircumference + 1);
@@ -637,9 +684,9 @@ static void drawScreen(wxGLCanvas *parent)
         *(indexBuffer+3*(numPointsOnCircumference)+i) = pllGramIB[i];
     };
 
-    for(int i = 0; i < 3*(numPointsOnCircumference+8);i+=3){
-        std::cout << (i/3)<< ": " << *(indexBuffer + i) << " | " << *(indexBuffer + i + 1) << " | " << *(indexBuffer + i +2) << std::endl;
-    };
+    // for(int i = 0; i < 3*(numPointsOnCircumference+8);i+=3){
+    //     std::cout << (i/3)<< ": " << *(indexBuffer + i) << " | " << *(indexBuffer + i + 1) << " | " << *(indexBuffer + i +2) << std::endl;
+    // };
 
     //Until Here
 
@@ -701,22 +748,65 @@ void GLCanvas::keyPress(wxKeyEvent& e){
     wxChar keyVal = e.GetKeyCode();
     bool redrawScreen = false;
     float speed = 0.05;
+    bool boundsNotMet;
+    int x,y;
+
     switch (keyVal)
     {
     case 87:
-        y_pos += (((y_pos + playerRadius+0.02f) <= 1) && withinBounds(obstacles,4,x_pos,(y_pos+playerRadius))) ? speed : 0;
+        boundsNotMet = ((y_pos + playerRadius+0.02f) <= 1);
+        y_pos += (boundsNotMet && withinBounds(obstacles,4,x_pos,(y_pos+playerRadius))) ? speed : 0;
+        if(!boundsNotMet){
+            x = (*mutablePointer).getGridCoordinates()[0];
+            y = ((*mutablePointer).getGridCoordinates()[1] - 1);
+            std::cout << x << " , " << y <<std::endl;
+            mutablePointer = findNode(x,y);
+            resetCorners();
+            drawObstacles(mutablePointer);
+            y_pos = -1.0f + playerRadius;
+        };
         redrawScreen = true;
         break;
     case 83:
-        y_pos -= (((y_pos - playerRadius) >= -1) && withinBounds(obstacles,4,x_pos,(y_pos-playerRadius))) ? speed : 0;
+        boundsNotMet = ((y_pos - playerRadius) >= -1);
+        y_pos -= (boundsNotMet && withinBounds(obstacles,4,x_pos,(y_pos-playerRadius))) ? speed : 0;
+        if(!boundsNotMet){
+            x = (*mutablePointer).getGridCoordinates()[0];
+            y = ((*mutablePointer).getGridCoordinates()[1] + 1);
+            std::cout << x << " , " << y <<std::endl;
+            mutablePointer = findNode(x,y);
+            resetCorners();
+            drawObstacles(mutablePointer);
+            y_pos = 1.0f - playerRadius;
+        };
         redrawScreen = true;
         break;
     case 65:
-        x_pos -= (((x_pos - playerRadius) >= -1) && withinBounds(obstacles,4,(x_pos-playerRadius),y_pos)) ? speed : 0;
+        boundsNotMet = ((x_pos - playerRadius) >= -1);
+        x_pos -= (boundsNotMet && withinBounds(obstacles,4,(x_pos-playerRadius),y_pos)) ? speed : 0;
+        if(!boundsNotMet){
+            x = ((*mutablePointer).getGridCoordinates()[0] - 1);
+            y = (*mutablePointer).getGridCoordinates()[1];
+            std::cout << x << " , " << y <<std::endl;
+            mutablePointer = findNode(x,y);
+            resetCorners();
+            drawObstacles(mutablePointer);
+            x_pos = 1.0f - playerRadius;
+        };
         redrawScreen = true;
         break;
     case 68:
-        x_pos += (((x_pos + playerRadius) <= 1) && withinBounds(obstacles,4,(x_pos+playerRadius),y_pos)) ? speed : 0;
+        boundsNotMet = ((x_pos + playerRadius) <= 1);
+        x_pos += ( boundsNotMet && withinBounds(obstacles,4,(x_pos+playerRadius),y_pos)) ? speed : 0;
+        if(!boundsNotMet){
+            x = ((*mutablePointer).getGridCoordinates()[0] + 1);
+            y = (*mutablePointer).getGridCoordinates()[1];
+            std::cout << x << " , " << y <<std::endl;
+            mutablePointer = findNode(x,y);
+            resetCorners();
+            drawObstacles(mutablePointer);
+            x_pos = -1.0f + playerRadius;
+        };
         redrawScreen = true;
         break;
     default:

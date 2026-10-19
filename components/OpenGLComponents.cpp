@@ -31,6 +31,12 @@ public:
         if(gridLocation[0] == 9) directions[2] = true;      // East
         if(gridLocation[0] == 0) directions[3] = true;      // West
     };
+    void edgeMaker(){
+        if(gridLocation[1] == 0) directions[0] = false;      // North
+        else if(gridLocation[1] == 9) directions[1] = false; // South
+        if(gridLocation[0] == 9) directions[2] = false;      // East
+        if(gridLocation[0] == 0) directions[3] = false;      // West
+    };
 };
 
 void mazeNode::setGridCoordinate(int x, int y){
@@ -403,24 +409,25 @@ static float* createCorners(){
 
 static void drawObstacles(mazeNode* layout){
     // std::cout << (layout->getGridCoordinates()[0]) << " , " << (layout->getGridCoordinates()[0]);
+    layout->edgeMaker();
     for(int i = 0; i< 4; i++){
         if(!layout->directions[i]){
             switch (i)
             {
             case 0:
-                obstacles[0] = {-1.0f,1.0f,1.0f,0.5f};
+                obstacles[3] = {-1.0f,1.0f,1.0f,0.5f};
                 std::cout << "North blocked" << std::endl;
                 break;
             case 1:
-                obstacles[2] = {-1.0f,-0.5f,1.0f,-1.0f};
+                obstacles[1] = {-1.0f,-0.5f,1.0f,-1.0f};
                 std::cout << "South blocked" << std::endl;
                 break;
             case 2:
-                obstacles[3] = {0.5f,1.0f,1.0f,-1.0f};
+                obstacles[0] = {0.5f,1.0f,1.0f,-1.0f};
                 std::cout << "East blocked" << std::endl;
                 break;
             case 3:
-                obstacles[1] = {-1.0f,1.0f,-0.5f,-1.0f};
+                obstacles[2] = {-1.0f,1.0f,-0.5f,-1.0f};
                 std::cout << "West blocked" << std::endl;
                 break;
             default:
@@ -429,40 +436,30 @@ static void drawObstacles(mazeNode* layout){
         };
     };
 
-    for(int i = 0; i< 4; i++){
-        std::cout << layout->directions[i] << " | ";
-    };
+    // for(int i = 0; i< 4; i++){
+    //     std::cout << layout->directions[i] << " | ";
+    // };
 
-    std::cout << std::endl;
+    // std::cout << std::endl;
 
-    if(layout->getGridCoordinates()[0] == 0){
-        std::cout << "Hor 0 Trigerred" << std::endl;
-        obstacles[1] = {-1.0f,1.0f,-0.5f,-1.0f};
-    }else if(layout->getGridCoordinates()[0] == 9){
-        obstacles[3] = {0.5f,1.0f,1.0f,-1.0f};
+    // if(layout->getGridCoordinates()[0] == 0){
+    //     // West Blocked
+    //     std::cout << "Hor 0 Trigerred" << std::endl;
+    //     obstacles[1] = {-1.0f,1.0f,-0.5f,-1.0f};
+    // }else if(layout->getGridCoordinates()[0] == 9){
+    //     // East blocked
+    //     obstacles[3] = {0.5f,1.0f,1.0f,-1.0f};
 
-    };
+    // };
 
-    if(layout->getGridCoordinates()[1] == 0){
-        std::cout << "Vert 0 Trigerred" << std::endl;
-        obstacles[0] = {-1.0f,1.0f,1.0f,0.5f};
-    }else if(layout->getGridCoordinates()[1] == 9){
-        obstacles[2] = {-1.0f,-0.5f,1.0f,-1.0f};
-    };
+    // if(layout->getGridCoordinates()[1] == 0){
+    //     std::cout << "Vert 0 Trigerred" << std::endl;
+    //     obstacles[0] = {-1.0f,1.0f,1.0f,0.5f};
+    // }else if(layout->getGridCoordinates()[1] == 9){
+    //     obstacles[2] = {-1.0f,-0.5f,1.0f,-1.0f};
+    // };
 
 };
-
-// void drawObstacles(Obstacle* obstacles, float &positions, uint32_t &indexes, mazeNode &currentNode){
-//     obstacles[0] = {-1.0f,-1.0f,-0.5f,-0.5f};
-//     obstacles[1] = {0.5,-1,1,-0.5};
-//     obstacles[2] = {-1.0f,0.5f,-0.5f,1.0f};
-//     obstacles[3] = {0.5f,0.5f,1.0f,1.0f};
-
-//     for(int i = 0; i< 4;i++){
-//         ;
-//     };
-// };
-
 static void GLClearError(){
     while (glGetError());
 };
@@ -777,6 +774,10 @@ void GLCanvas::keyPress(wxKeyEvent& e){
             mutablePointer = findNode(x,y);
             resetCorners();
             drawObstacles(mutablePointer);
+            for(int i = 0; i< 4;i++){
+                std::cout << "(" << obstacles[i].x_uleft << "," << obstacles[i].y_uleft << ") | ";
+                std::cout << "(" << obstacles[i].x_bright << "," << obstacles[i].y_bright << ")" << std::endl;
+            };
             y_pos = 1.0f - playerRadius;
         };
         redrawScreen = true;

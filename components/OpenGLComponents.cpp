@@ -154,6 +154,8 @@ static bool boxedIn(cardinals dir,mazeNode currentNode){
         };
 };
 
+int x_final;
+int y_final;
 static void makeMaze(){
 
 
@@ -172,6 +174,9 @@ static void makeMaze(){
     srand(time(NULL));
     finalPointer = new mazeNode;
     finalPointer->setGridCoordinate(rand()%10, rand()%10);
+    x_final = finalPointer->getGridCoordinates()[0];
+    y_final = finalPointer->getGridCoordinates()[1];
+
 
     //std::cout << initialNode.nextPointer << " | " << *(initialNode.getGridCoordinates()) << " | " << *(initialNode.getGridCoordinates() + 1) << std::endl;
     //std::cout << finalNode.nextPointer << " | " << *(finalNode.getGridCoordinates()) << " | " << *(finalNode.getGridCoordinates() + 1) << std::endl;
@@ -290,6 +295,11 @@ struct Obstacle{
 };
 
 Obstacle* obstacles = new Obstacle[4];
+
+static float scales[2] = {1.25f,0.75f};
+static int verticesToRender = 2*(numPointsOnCircumference+1);
+static int indicesToRender = 3*(numPointsOnCircumference);
+static bool atFinal = false;
 
 
 static bool withinBounds(Obstacle* obstacles,int obstacleCount,float new_x,float new_y)
@@ -436,30 +446,22 @@ static void drawObstacles(mazeNode* layout){
         };
     };
 
-    // for(int i = 0; i< 4; i++){
-    //     std::cout << layout->directions[i] << " | ";
-    // };
-
-    // std::cout << std::endl;
-
-    // if(layout->getGridCoordinates()[0] == 0){
-    //     // West Blocked
-    //     std::cout << "Hor 0 Trigerred" << std::endl;
-    //     obstacles[1] = {-1.0f,1.0f,-0.5f,-1.0f};
-    // }else if(layout->getGridCoordinates()[0] == 9){
-    //     // East blocked
-    //     obstacles[3] = {0.5f,1.0f,1.0f,-1.0f};
-
-    // };
-
-    // if(layout->getGridCoordinates()[1] == 0){
-    //     std::cout << "Vert 0 Trigerred" << std::endl;
-    //     obstacles[0] = {-1.0f,1.0f,1.0f,0.5f};
-    // }else if(layout->getGridCoordinates()[1] == 9){
-    //     obstacles[2] = {-1.0f,-0.5f,1.0f,-1.0f};
-    // };
-
 };
+
+static void addVertices(float* addend,int points,float* vertices){
+    for(int i = 0; i<points;i++){
+        addend[verticesToRender + i] = vertices[i];
+    }
+    verticesToRender += points;
+};
+
+static void addIndices(uint32_t* addend, int indices, uint32_t* indexes){
+    for(int i = 0;i<indices;i++){
+        addend[indicesToRender + i] = indexes[i];
+    };
+    indicesToRender += indices;
+};
+
 static void GLClearError(){
     while (glGetError());
 };
@@ -485,7 +487,7 @@ static void GLDisplayErrors_(const char* file, int line){
     
 };
 
-static uint32_t* makeCircleIB(int numVertices)
+static uint32_t* makeCircleIB(int numVertices,int jump=0)
 {
     if(numVertices > 201 or numVertices < 2){
         throw std::invalid_argument("Inappropriate angular seperation: Not within range (0,201]");
@@ -493,16 +495,16 @@ static uint32_t* makeCircleIB(int numVertices)
 
     uint32_t* indexBufferArray = new uint32_t[3*numVertices];
     for(int i = 0;i<(numVertices-1);i++){
-        *(indexBufferArray + 3*i) = 0;
-        *(indexBufferArray + 3*i + 1) = i+1; 
-        *(indexBufferArray + 3*i + 2) = (i != numVertices - 2) ? i+2 : 1; 
+        *(indexBufferArray + 3*i) = jump;
+        *(indexBufferArray + 3*i + 1) = i+1 + jump; 
+        *(indexBufferArray + 3*i + 2) = (i != numVertices - 2) ? i+2 + jump : 1 + jump; 
     };
     /* Returns 3x the number of triangles
     Number of triangles formed = numVertices - 2 */
     return indexBufferArray;
 };
 
-static float* makeCircleVB(float x_origin, float y_origin, float radius, int angularSeperation)
+static float* makeCircleVB(float x_origin, float y_origin, float radius, int angularSeperation,float max_x=1,float max_y=1)
 {
     /* Uses the r^2 = x^2 + y^2  equation to calculate the displcement of 
     a circle from its origin */
@@ -519,8 +521,8 @@ static float* makeCircleVB(float x_origin, float y_origin, float radius, int ang
     {
         
         // DO NOT USE 2*pi as incrementing index 'i' are all multiples of 2
-        *(vertexBufferArray + i) = x_origin + radius*sinf(M_PI*(i/float (angularSeperation)));
-        *(vertexBufferArray + i + 1) = y_origin + radius*cosf(M_PI*(i/float (angularSeperation)));
+        *(vertexBufferArray + i) = x_origin + radius*sinf(M_PI*(i/float (angularSeperation)))*max_x;
+        *(vertexBufferArray + i + 1) = y_origin + radius*cosf(M_PI*(i/float (angularSeperation)))*max_y;
     };
     //21 pairs of vertex buffers are returned due to 20 points on the circumference and 1 origin
     return vertexBufferArray;
@@ -598,6 +600,7 @@ public:
     void make2DViewPort(int topleft_x, int topleft_y, int bottomrigth_x, int bottomrigth_y);
     float getHeight(){return (wxWindow::GetSize().y * wxWindow::GetContentScaleFactor());};
     float getWidth(){return (wxWindow::GetSize().x * wxWindow::GetContentScaleFactor());};
+    wxFrame* parentFrame;
 
 
     // User Interactions
@@ -608,7 +611,9 @@ public:
 
 GLCanvas::GLCanvas(wxFrame* parent, int* args) : wxGLCanvas(parent,wxID_ANY,args,wxDefaultPosition,wxDefaultSize,wxBORDER_DOUBLE){
     makeMaze();
+    parentFrame = parent;
     // std::cout << headPointer << std::endl;
+    
 
     mazeNode* nextNode = headPointer;
     std::cout << finalPointer->nextPointer << " | " << *(finalPointer->getGridCoordinates()) << " | " << *(finalPointer->getGridCoordinates() + 1) << std::endl << std::endl;
@@ -652,40 +657,44 @@ void GLCanvas::make2DViewPort(int topleft_x, int topleft_y, int bottomrigth_x, i
 static void drawScreen(wxGLCanvas *parent)
 {
     glClear(GL_COLOR_BUFFER_BIT);
-    float* positions = makeCircleVB(x_pos,y_pos,playerRadius,numPointsOnCircumference);
+    indicesToRender = 3*numPointsOnCircumference;
+    verticesToRender = 2*(numPointsOnCircumference + 1);
+    float* positions = makeCircleVB(x_pos,y_pos,playerRadius,numPointsOnCircumference,scales[0],scales[1]);
 
     float* corners = createCorners();
 
-    for(int i = 0; i<32;i++){
-        *(positions+(2*(numPointsOnCircumference+1))+i) = corners[i];
-    };
-
-    // for(int i = 0; i < 2*(numPointsOnCircumference+1)+32;i+=2){
-    //     std::cout << (i/2) << ": "<< *(positions+i) << " | " << *(positions +i +1) << std::endl;
-    // };
-
+    addVertices(positions,32,corners);
 
     //There are 21 points including the center of the circle
     uint32_t* indexBuffer = makeCircleIB(numPointsOnCircumference + 1);
 
-    //Delete this section
-    uint32_t* pllGramIB = new uint32_t[24];
-    for(int i = 1; i<= 4; i++){
-        pllGramIB[6*(i-1) + 3] = numPointsOnCircumference + 4*(i);
+    uint32_t pllGramIB[24];
+    for(int i=1;i<=4;i++){
         pllGramIB[6*(i-1)] = numPointsOnCircumference + 4*(i) - 3;
+        pllGramIB[6*(i-1) + 3] = numPointsOnCircumference + 4*(i);
         pllGramIB[6*(i-1) + 1] = pllGramIB[6*(i-1) + 4] = numPointsOnCircumference + 4*(i) - 1;
         pllGramIB[6*(i-1) + 2] = pllGramIB[6*(i-1) + 5] = numPointsOnCircumference + 4*(i) - 2;
     };
 
-    for(int i = 0; i<24;i++){
-        *(indexBuffer+3*(numPointsOnCircumference)+i) = pllGramIB[i];
+
+    //8 Triangles, 3 points per triangle
+
+    addIndices(indexBuffer,24,pllGramIB);
+
+    if(atFinal){
+        float* eggVertices = makeCircleVB(0.0f,0.0f,2.5*playerRadius,100,1,2);
+        uint32_t* eggIndices = makeCircleIB(100+1,218);
+        addVertices(positions,2*101,eggVertices);
+        addIndices(indexBuffer,3*100,eggIndices);
     };
 
-    // for(int i = 0; i < 3*(numPointsOnCircumference+8);i+=3){
-    //     std::cout << (i/3)<< ": " << *(indexBuffer + i) << " | " << *(indexBuffer + i + 1) << " | " << *(indexBuffer + i +2) << std::endl;
-    // };
+    for(int i = 0; i< verticesToRender;i+=2){
+        std::cout << (i/2) << ": " << positions[i] << " | " << positions[i+1] << std::endl;
+    };
 
-    //Until Here
+    for(int i = 0; i< indicesToRender;i+=3){
+        std::cout << (i/3) << ": " << indexBuffer[i] << " | " << indexBuffer[i+1] << " | " << indexBuffer[i+2] <<std::endl;
+    };
 
     unsigned int vao;
     glGenVertexArrays(1,&vao);
@@ -694,12 +703,12 @@ static void drawScreen(wxGLCanvas *parent)
     unsigned int buffer;
     glGenBuffers(1,&buffer);
     glBindBuffer(GL_ARRAY_BUFFER,buffer);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(float)*(2*(numPointsOnCircumference+1)+32),positions,GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,sizeof(float)*(verticesToRender),positions,GL_STATIC_DRAW);
 
     unsigned int ibo;
     glGenBuffers(1,&ibo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(uint32_t)*(3*numPointsOnCircumference + 24),indexBuffer,GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(uint32_t)*(indicesToRender),indexBuffer,GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0,2, GL_FLOAT,GL_FALSE, 2 * sizeof(float),0);
@@ -708,7 +717,7 @@ static void drawScreen(wxGLCanvas *parent)
     /* Determines the number of triangles to draw based on the 
     number of points on the circumference */
     
-    glDrawElements(GL_TRIANGLES,3*numPointsOnCircumference + 24,GL_UNSIGNED_INT,nullptr);
+    glDrawElements(GL_TRIANGLES,indicesToRender,GL_UNSIGNED_INT,nullptr);
 
 
     glFlush();
@@ -741,37 +750,59 @@ void GLCanvas::render(wxPaintEvent& e){
 
 };
 
+int x = 0,y = 0;
+
+static bool fertilized(mazeNode* currentNode){
+    bool cond_node_x = currentNode->getGridCoordinates()[0] == finalPointer->getGridCoordinates()[0];
+    bool cond_node_y = currentNode->getGridCoordinates()[1] == finalPointer->getGridCoordinates()[1];
+    bool cond_x = (-playerRadius*scales[0]) <= x_pos && x_pos <= (playerRadius*scales[0]);
+    bool cond_y = (- playerRadius*scales[1]) <= y_pos && y_pos <= (playerRadius*scales[1]);
+    return (cond_node_x && cond_node_y && cond_x && cond_y);
+};
+float zig = 0.02f, zag = 0.02f;
 void GLCanvas::keyPress(wxKeyEvent& e){
     wxChar keyVal = e.GetKeyCode();
     bool redrawScreen = false;
     float speed = 0.05;
     bool boundsNotMet;
-    int x,y;
+
+    std::cout << "Destination: " << x_final << " , " << y_final << std::endl;
+    std::cout << "Present: " << x << " , " << y << std::endl;
 
     switch (keyVal)
     {
     case 87:
         boundsNotMet = ((y_pos + playerRadius+0.02f) <= 1);
         y_pos += (boundsNotMet && withinBounds(obstacles,4,x_pos,(y_pos+playerRadius))) ? speed : 0;
+        zig = -zig;
+        x_pos += zig;  
         if(!boundsNotMet){
             x = (*mutablePointer).getGridCoordinates()[0];
             y = ((*mutablePointer).getGridCoordinates()[1] - 1);
-            std::cout << x << " , " << y <<std::endl;
             mutablePointer = findNode(x,y);
+            std::cout << x << " , " << y <<std::endl;
             resetCorners();
             drawObstacles(mutablePointer);
             y_pos = -1.0f + playerRadius;
         };
         redrawScreen = true;
+        scales[0] = 0.75f;
+        scales[1] = 1.25f;
         break;
     case 83:
         boundsNotMet = ((y_pos - playerRadius) >= -1);
         y_pos -= (boundsNotMet && withinBounds(obstacles,4,x_pos,(y_pos-playerRadius))) ? speed : 0;
+        zig = -zig;
+        x_pos += zig; 
+        if(mutablePointer->getGridCoordinates() == finalPointer->getGridCoordinates()) {
+                atFinal = true;
+                std::cout << "At Final" <<std::endl;
+        };
         if(!boundsNotMet){
             x = (*mutablePointer).getGridCoordinates()[0];
             y = ((*mutablePointer).getGridCoordinates()[1] + 1);
-            std::cout << x << " , " << y <<std::endl;
             mutablePointer = findNode(x,y);
+            std::cout << x << " , " << y <<std::endl;
             resetCorners();
             drawObstacles(mutablePointer);
             for(int i = 0; i< 4;i++){
@@ -781,40 +812,69 @@ void GLCanvas::keyPress(wxKeyEvent& e){
             y_pos = 1.0f - playerRadius;
         };
         redrawScreen = true;
+        scales[0] = 0.75f;
+        scales[1] = 1.25f;
         break;
     case 65:
         boundsNotMet = ((x_pos - playerRadius) >= -1);
         x_pos -= (boundsNotMet && withinBounds(obstacles,4,(x_pos-playerRadius),y_pos)) ? speed : 0;
+        zag = -zag;
+        y_pos += zag;
+        if(mutablePointer->getGridCoordinates() == finalPointer->getGridCoordinates()) {
+            atFinal = true;
+            std::cout << "At Final" <<std::endl;
+        };
         if(!boundsNotMet){
             x = ((*mutablePointer).getGridCoordinates()[0] - 1);
             y = (*mutablePointer).getGridCoordinates()[1];
-            std::cout << x << " , " << y <<std::endl;
             mutablePointer = findNode(x,y);
+            std::cout << x << " , " << y <<std::endl;
             resetCorners();
             drawObstacles(mutablePointer);
             x_pos = 1.0f - playerRadius;
         };
         redrawScreen = true;
+        scales[0] = 1.25f;
+        scales[1] = 0.75f;
         break;
     case 68:
         boundsNotMet = ((x_pos + playerRadius) <= 1);
         x_pos += ( boundsNotMet && withinBounds(obstacles,4,(x_pos+playerRadius),y_pos)) ? speed : 0;
+        zag = -zag;
+        y_pos += zag;
+        if(mutablePointer->getGridCoordinates() == finalPointer->getGridCoordinates()) {
+            atFinal = true;
+            std::cout << "At Final" <<std::endl;
+        };
         if(!boundsNotMet){
             x = ((*mutablePointer).getGridCoordinates()[0] + 1);
             y = (*mutablePointer).getGridCoordinates()[1];
-            std::cout << x << " , " << y <<std::endl;
             mutablePointer = findNode(x,y);
+            std::cout << x << " , " << y <<std::endl;
             resetCorners();
             drawObstacles(mutablePointer);
             x_pos = -1.0f + playerRadius;
         };
         redrawScreen = true;
+        scales[0] = 1.25f;
+        scales[1] = 0.75f;
         break;
     default:
         break;
     }
 
+    if(fertilized(mutablePointer)){
+        std::cout << "Fertilized like a farmland" << std::endl;
+        parentFrame->Close(true);
+    }
+
     if(redrawScreen){
+        if(x == x_final && y == y_final){
+            atFinal = true;
+            std::cout << "Final" <<std::endl;
+        }else{
+            atFinal = false;
+        };
         drawScreen(this);
     };
 }

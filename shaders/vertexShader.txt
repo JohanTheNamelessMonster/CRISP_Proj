@@ -1,5 +1,10 @@
 #version 410
 layout(location = 0) in vec4 positions;
+layout(location = 1) in vec4 colours;
+
+out vec4 v_colours;
+
 void main(){
+    v_colours = colours;
     gl_Position = positions;
 }

@@ -300,6 +300,7 @@ static float scales[2] = {1.25f,0.75f};
 static int verticesToRender = 2*(numPointsOnCircumference+1);
 static int indicesToRender = 3*(numPointsOnCircumference);
 static bool atFinal = false;
+static float default_colours[4] = {1.0f,1.0f,1.0f,1.0f};
 
 
 static bool withinBounds(Obstacle* obstacles,int obstacleCount,float new_x,float new_y)
@@ -401,7 +402,7 @@ static void resetCorners(){
     obstacles[3] = {-1,1,-0.5,0.5};
 };
 
-static float* createCorners(){
+static float* createCorners(float colours[4] = default_colours){
     int cornerflen = 0;
     float* cornerf = new float[0];
 
@@ -413,7 +414,18 @@ static float* createCorners(){
         cornerflen += 8;
     };
 
-    return cornerf;
+    float* colouredCorners = new float[3*cornerflen];
+
+    for(int i = 0; i < 32; i+=2){
+        colouredCorners[3*i] = cornerf[i];
+        colouredCorners[3*i + 1] = cornerf[i + 1];
+        for(int j= 1; j<= 4; j++){
+            colouredCorners[3*i+j+1] = colours[j-1];
+        };
+    };
+
+    delete[] cornerf;
+    return colouredCorners;
 
 };
 
@@ -504,7 +516,7 @@ static uint32_t* makeCircleIB(int numVertices,int jump=0)
     return indexBufferArray;
 };
 
-static float* makeCircleVB(float x_origin, float y_origin, float radius, int angularSeperation,float max_x=1,float max_y=1)
+static float* makeCircleVB(float x_origin, float y_origin, float radius, int angularSeperation,float max_x=1,float max_y=1, float colours[4] = default_colours)
 {
     /* Uses the r^2 = x^2 + y^2  equation to calculate the displcement of 
     a circle from its origin */
@@ -512,17 +524,23 @@ static float* makeCircleVB(float x_origin, float y_origin, float radius, int ang
     if(angularSeperation > 500 or angularSeperation < 2){
         throw std::invalid_argument("Inappropriate angular seperation: Not within range (0,500]");
     };
-    float* vertexBufferArray = new float[2 * (angularSeperation+1)];
+    float* vertexBufferArray = new float[6 * (angularSeperation+1)];
 
     *(vertexBufferArray) = x_origin;
     *(vertexBufferArray+1) = y_origin;
+    for(int j = 1; j <= 4; j++){
+            *(vertexBufferArray + j + 1) = colours[j -1];
+    };
 
-    for(int i=2; i < 2*(angularSeperation + 1);i+=2)
+    for(int i=6; i < 6*(angularSeperation + 1);i+=6)
     {
         
         // DO NOT USE 2*pi as incrementing index 'i' are all multiples of 2
         *(vertexBufferArray + i) = x_origin + radius*sinf(M_PI*(i/float (angularSeperation)))*max_x;
         *(vertexBufferArray + i + 1) = y_origin + radius*cosf(M_PI*(i/float (angularSeperation)))*max_y;
+        for(int j = 1; j <= 4; j++){
+            *(vertexBufferArray + i + j + 1) = colours[j -1];
+        };
     };
     //21 pairs of vertex buffers are returned due to 20 points on the circumference and 1 origin
     return vertexBufferArray;
@@ -658,12 +676,15 @@ static void drawScreen(wxGLCanvas *parent)
 {
     glClear(GL_COLOR_BUFFER_BIT);
     indicesToRender = 3*numPointsOnCircumference;
-    verticesToRender = 2*(numPointsOnCircumference + 1);
+    verticesToRender = 6*(numPointsOnCircumference + 1);
     float* positions = makeCircleVB(x_pos,y_pos,playerRadius,numPointsOnCircumference,scales[0],scales[1]);
+    std::cout << "So far so good"<<std::endl;
 
-    float* corners = createCorners();
+    float red_colour[4] = {1.0f,0.0f,0.0f,1.0f};
+    float* corners = createCorners(red_colour);
+    std::cout << "Outside clean, inside clean"<<std::endl;
 
-    addVertices(positions,32,corners);
+    addVertices(positions,96,corners);
 
     //There are 21 points including the center of the circle
     uint32_t* indexBuffer = makeCircleIB(numPointsOnCircumference + 1);
@@ -682,9 +703,10 @@ static void drawScreen(wxGLCanvas *parent)
     addIndices(indexBuffer,24,pllGramIB);
 
     if(atFinal){
-        float* eggVertices = makeCircleVB(0.0f,0.0f,2.5*playerRadius,100,1,2);
+        float egg_colours[4] = {1.0f,0.7529f,0.7961f,1.0f}; 
+        float* eggVertices = makeCircleVB(0.0f,0.0f,2.5*playerRadius,100,1,2,egg_colours);
         uint32_t* eggIndices = makeCircleIB(100+1,218);
-        addVertices(positions,2*101,eggVertices);
+        addVertices(positions,6*101,eggVertices);
         addIndices(indexBuffer,3*100,eggIndices);
     };
 
@@ -711,7 +733,9 @@ static void drawScreen(wxGLCanvas *parent)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(uint32_t)*(indicesToRender),indexBuffer,GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0,2, GL_FLOAT,GL_FALSE, 2 * sizeof(float),0);
+    glVertexAttribPointer(0,2, GL_FLOAT,GL_FALSE, 6 * sizeof(float),0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1,4, GL_FLOAT,GL_FALSE, 6 * sizeof(float),(const void*) 8);
 
 
     /* Determines the number of triangles to draw based on the 

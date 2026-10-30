@@ -21,9 +21,6 @@ private:
 mainFrame::mainFrame(wxWindow* parent, const wxString title) : wxFrame(parent,wxID_ANY,title,wxDefaultPosition,wxSize(side_length,side_length),wxDEFAULT_FRAME_STYLE & ~(wxMAXIMIZE_BOX | wxRESIZE_BORDER))
 {
 
-    this->SetMaxSize(wxSize(side_length,side_length));
-    this->SetMinSize(wxSize(side_length,side_length));
-
     wxMenu* menuFile = new wxMenu();
     menuFile->Append(1,"&Hello");
     wxMenuBar* menuBar = new wxMenuBar;

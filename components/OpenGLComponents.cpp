@@ -74,7 +74,6 @@ static mazeNode * findNode(int x, int y, bool logStuff = false){
             break;
         }
         currentNode = currentNode->nextPointer;
-        //std::cout << currentNode->nextPointer << std::endl;
 
     };
     return nullptr;
@@ -130,7 +129,6 @@ static bool boxedIn(cardinals dir,mazeNode currentNode){
 
         mazeNode* discoveredNode = (findNode(x+hGain, y+vGain));
         if(discoveredNode != nullptr){
-            //std::cout <<"True triggered" <<std::endl;
             mazeNode nextNode = *(discoveredNode);
             nextNode.exploredDirections(opp_Dir);
             int soleDir = 0;
@@ -149,7 +147,6 @@ static bool boxedIn(cardinals dir,mazeNode currentNode){
                 return true;
             };
         }else{
-            //std::cout <<"False triggered" <<std::endl;
             return false;
         };
 };
@@ -178,10 +175,6 @@ static void makeMaze(){
     y_final = finalPointer->getGridCoordinates()[1];
 
 
-    //std::cout << initialNode.nextPointer << " | " << *(initialNode.getGridCoordinates()) << " | " << *(initialNode.getGridCoordinates() + 1) << std::endl;
-    //std::cout << finalNode.nextPointer << " | " << *(finalNode.getGridCoordinates()) << " | " << *(finalNode.getGridCoordinates() + 1) << std::endl;
-
-
     //Loop around until the final node has been found.
     bool x_match = *(currentNode->getGridCoordinates()) == *(finalPointer->getGridCoordinates());
     bool y_match = *(currentNode->getGridCoordinates() + 1) == *(finalPointer->getGridCoordinates() +1);
@@ -189,7 +182,6 @@ static void makeMaze(){
     int vGain, hGain,counter = 0;
     while(!(x_match && y_match)){
         counter+=1;
-        //std::cout << *(currentNode->getGridCoordinates()) << " | " << *(currentNode->getGridCoordinates()+1) << std::endl;
         vGain = 0;
         hGain = 0;
         currentNode->directionInit();
@@ -197,7 +189,6 @@ static void makeMaze(){
 
         actualParent = nullptr;
 
-        //std::cout << randDir <<std::endl;
 
         cardinals opp_dir;
         switch (randDir){
@@ -252,9 +243,9 @@ static void makeMaze(){
         };
         currentNode->exploredDirections((cardinals) randDir);
         newNode->exploredDirections(opp_dir);
-        // //std::cout << "-----------------------------------" <<std::endl;
-        // //std::cout << "Values: " << vGain << " | " << hGain << std::endl;
-        // //std::cout << "-----------------------------------" <<std::endl;
+        //  << "-----------------------------------" <<std::endl;
+        //  << "Values: " << vGain << " | " << hGain << std::endl;
+        //  << "-----------------------------------" <<std::endl;
 
         if(!condititon1){
             currentNode = nodeExists;
@@ -275,9 +266,6 @@ static void makeMaze(){
 
     };
 
-    // //std::cout << initialNode.nextPointer << std::endl;
-    // //std::cout << headPointer << std::endl;
-    //std::cout << nextNode->nextPointer << " | " << *(nextNode->getGridCoordinates()) << " | " << *(nextNode->getGridCoordinates() + 1) << std::endl;
 
 };
 //Until Here
@@ -493,7 +481,6 @@ static void GLDisplayErrors_(const char* file, int line){
             case GL_INVALID_FRAMEBUFFER_OPERATION: errorMessage = "INVALID_FRAMEBUFFER_OPERATION"; break;
             default: break;
         }
-        //std::cout << "Open GL error: " << errorMessage  << " on " << line << '\n';
     };
 
     
@@ -521,7 +508,7 @@ static float* makeCircleVB(float x_origin, float y_origin, float radius, int ang
     /* Uses the r^2 = x^2 + y^2  equation to calculate the displcement of 
     a circle from its origin */
     (angularSeperation % 2) == 1 ? angularSeperation += 1 : angularSeperation;
-    if(angularSeperation > 500 or angularSeperation < 2){
+    if(angularSeperation > 200 or angularSeperation < 2){
         throw std::invalid_argument("Inappropriate angular seperation: Not within range (0,500]");
     };
     float* vertexBufferArray = new float[6 * (angularSeperation+1)];
@@ -598,7 +585,7 @@ static unsigned int makeShaders(const std::string &vertexShader, const std::stri
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
         char* message = (char*) alloca(length * sizeof(char));
         glGetProgramInfoLog(program, length, &length, message);
-        //std::cout << "Failed to link program:\n" << message;
+        std::cout << "Failed to link program:\n" << message;
         glValidateProgram(program);
     }
 
@@ -630,22 +617,7 @@ public:
 GLCanvas::GLCanvas(wxFrame* parent, int* args) : wxGLCanvas(parent,wxID_ANY,args,wxDefaultPosition,wxDefaultSize,wxBORDER_DOUBLE){
     makeMaze();
     parentFrame = parent;
-    // std::cout << headPointer << std::endl;
-    
-
     mazeNode* nextNode = headPointer;
-    std::cout << finalPointer->nextPointer << " | " << *(finalPointer->getGridCoordinates()) << " | " << *(finalPointer->getGridCoordinates() + 1) << std::endl << std::endl;
-
-    while(nextNode->nextPointer != nullptr){
-        std::cout << std::endl;
-        for(int i = 0; i< 4; i++){
-            std::cout << nextNode->directions[i] << " | ";
-        };
-        std::cout << std::endl;
-        std::cout << nextNode->nextPointer << " | " << *(nextNode->getGridCoordinates()) << " | " << *(nextNode->getGridCoordinates() + 1) << std::endl;
-        nextNode = nextNode->nextPointer;
-    };
-
     resetCorners();
     drawObstacles(headPointer);
     wxGLContextAttrs cxtAttrs;
@@ -678,11 +650,9 @@ static void drawScreen(wxGLCanvas *parent)
     indicesToRender = 3*numPointsOnCircumference;
     verticesToRender = 6*(numPointsOnCircumference + 1);
     float* positions = makeCircleVB(x_pos,y_pos,playerRadius,numPointsOnCircumference,scales[0],scales[1]);
-    std::cout << "So far so good"<<std::endl;
 
     float red_colour[4] = {1.0f,0.0f,0.0f,1.0f};
     float* corners = createCorners(red_colour);
-    std::cout << "Outside clean, inside clean"<<std::endl;
 
     addVertices(positions,96,corners);
 
@@ -708,14 +678,6 @@ static void drawScreen(wxGLCanvas *parent)
         uint32_t* eggIndices = makeCircleIB(100+1,218);
         addVertices(positions,6*101,eggVertices);
         addIndices(indexBuffer,3*100,eggIndices);
-    };
-
-    for(int i = 0; i< verticesToRender;i+=2){
-        std::cout << (i/2) << ": " << positions[i] << " | " << positions[i+1] << std::endl;
-    };
-
-    for(int i = 0; i< indicesToRender;i+=3){
-        std::cout << (i/3) << ": " << indexBuffer[i] << " | " << indexBuffer[i+1] << " | " << indexBuffer[i+2] <<std::endl;
     };
 
     unsigned int vao;
@@ -790,9 +752,6 @@ void GLCanvas::keyPress(wxKeyEvent& e){
     float speed = 0.05;
     bool boundsNotMet;
 
-    std::cout << "Destination: " << x_final << " , " << y_final << std::endl;
-    std::cout << "Present: " << x << " , " << y << std::endl;
-
     switch (keyVal)
     {
     case 87:
@@ -804,7 +763,6 @@ void GLCanvas::keyPress(wxKeyEvent& e){
             x = (*mutablePointer).getGridCoordinates()[0];
             y = ((*mutablePointer).getGridCoordinates()[1] - 1);
             mutablePointer = findNode(x,y);
-            std::cout << x << " , " << y <<std::endl;
             resetCorners();
             drawObstacles(mutablePointer);
             y_pos = -1.0f + playerRadius;
@@ -820,19 +778,13 @@ void GLCanvas::keyPress(wxKeyEvent& e){
         x_pos += zig; 
         if(mutablePointer->getGridCoordinates() == finalPointer->getGridCoordinates()) {
                 atFinal = true;
-                std::cout << "At Final" <<std::endl;
         };
         if(!boundsNotMet){
             x = (*mutablePointer).getGridCoordinates()[0];
             y = ((*mutablePointer).getGridCoordinates()[1] + 1);
             mutablePointer = findNode(x,y);
-            std::cout << x << " , " << y <<std::endl;
             resetCorners();
             drawObstacles(mutablePointer);
-            for(int i = 0; i< 4;i++){
-                std::cout << "(" << obstacles[i].x_uleft << "," << obstacles[i].y_uleft << ") | ";
-                std::cout << "(" << obstacles[i].x_bright << "," << obstacles[i].y_bright << ")" << std::endl;
-            };
             y_pos = 1.0f - playerRadius;
         };
         redrawScreen = true;
@@ -846,13 +798,11 @@ void GLCanvas::keyPress(wxKeyEvent& e){
         y_pos += zag;
         if(mutablePointer->getGridCoordinates() == finalPointer->getGridCoordinates()) {
             atFinal = true;
-            std::cout << "At Final" <<std::endl;
         };
         if(!boundsNotMet){
             x = ((*mutablePointer).getGridCoordinates()[0] - 1);
             y = (*mutablePointer).getGridCoordinates()[1];
             mutablePointer = findNode(x,y);
-            std::cout << x << " , " << y <<std::endl;
             resetCorners();
             drawObstacles(mutablePointer);
             x_pos = 1.0f - playerRadius;
@@ -868,13 +818,11 @@ void GLCanvas::keyPress(wxKeyEvent& e){
         y_pos += zag;
         if(mutablePointer->getGridCoordinates() == finalPointer->getGridCoordinates()) {
             atFinal = true;
-            std::cout << "At Final" <<std::endl;
         };
         if(!boundsNotMet){
             x = ((*mutablePointer).getGridCoordinates()[0] + 1);
             y = (*mutablePointer).getGridCoordinates()[1];
             mutablePointer = findNode(x,y);
-            std::cout << x << " , " << y <<std::endl;
             resetCorners();
             drawObstacles(mutablePointer);
             x_pos = -1.0f + playerRadius;
